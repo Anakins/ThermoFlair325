@@ -1,0 +1,130 @@
+<div class="eqLogic eqLogic-widget allowResize #class#" data-eqType="#eqType#" data-eqLogic_id="#id#" data-eqLogic_uid="#uid#" data-version="#version#" data-translate-category="#translate_category#" data-category="#category#" data-tags="#tags#" style="#style#">
+    <style>
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap { padding: 4px 8px 6px 8px; text-align: left; font-size: 12px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-sec { margin: 6px 0 2px 0; padding-top: 4px; border-top: 1px solid rgba(128,128,128,.25); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-sec:first-child { border-top: none; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-head { display: flex; align-items: center; justify-content: space-between; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: .5px; opacity: .85; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-toggle { cursor: pointer; white-space: nowrap; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(128,128,128,.25); text-transform: none; letter-spacing: 0; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-toggle.tf-toggle-on { background: #2a9d8f; color: #fff; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pills { margin: 4px 0 2px 0; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill { display: inline-block; width: 24px; height: 24px; line-height: 24px; border-radius: 50%; text-align: center; font-weight: bold; margin-right: 3px; background: rgba(128,128,128,.2); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill.tf-on { background: #2a9d8f; color: #fff; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill.tf-next { box-shadow: inset 0 0 0 2px #2a9d8f; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill.tf-v4 { border: 1px dashed #d9534f; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill.tf-v4.tf-on { background: #d9534f; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-txt { white-space: normal; line-height: 1.35; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-small { font-size: 11px; opacity: .8; white-space: normal; line-height: 1.3; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-ovr { margin-top: 3px; color: #e76f51; font-weight: bold; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-actions { margin-top: 4px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-temps { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 2px 8px; font-size: 13px; margin: 2px 0; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-temps > span { white-space: nowrap; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-consigne { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0; font-size: 16px; font-weight: bold; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-consigne .btn { padding: 0 8px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-row { display: flex; justify-content: space-around; margin: 4px 0; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box { text-align: center; padding: 2px 6px; border-radius: 6px; opacity: .55; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box.tf-active { opacity: 1; background: rgba(42,157,143,.15); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box .tf-cons-lab { font-size: 11px; cursor: pointer; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box .tf-cons-val { font-size: 15px; font-weight: bold; margin: 0 4px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box .btn { padding: 0 6px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-bat { padding: 3px 4px; margin: 2px 0; border-radius: 4px; background: rgba(128,128,128,.1); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-bat.tf-bat-on { background: rgba(231,111,81,.18); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-bat-name { font-weight: bold; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-bat-time { float: right; font-size: 11px; opacity: .8; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-bat.tf-bat-shed { background: rgba(217,83,79,.2); }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-shed { margin: 3px 0; padding: 2px 6px; border-radius: 4px; background: rgba(217,83,79,.85); color: #fff; font-weight: bold; text-align: center; }
+        /* Mobile : pleine largeur, boutons dessinés ici (pas de Bootstrap sur l'appli mobile). */
+        .eqLogic[data-eqLogic_uid="#uid#"] { width: calc(100% - 8px) !important; max-width: 480px; min-height: 0 !important; height: auto !important; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap { font-size: 13px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .btn { display: inline-block; padding: 4px 10px; margin: 2px 2px; border-radius: 5px; background: rgba(128,128,128,.25); color: inherit !important; text-decoration: none; font-size: 13px; line-height: 1.3; font-weight: normal; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .btn-warning { background: #f0ad4e; color: #fff !important; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .btn-danger { background: #d9534f; color: #fff !important; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-cons-box .btn { padding: 2px 10px; font-size: 15px; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-pill { width: 30px; height: 30px; line-height: 30px; }
+    </style>
+    <div class="widget-name">
+        <span class="warning" title="#alert_name#"><i class="#alert_icon#"></i></span>
+        <span class="tf-cmd pull-right cursor" title="Rafraîchir" data-cmd_id="#refresh_id#"><i class="fas fa-sync"></i></span>
+        <span class="reportModeVisible">#name_display# <span class="object_name">#object_name#</span></span>
+        <a href="#eqLink#" class="reportModeHidden">#name_display# <span class="object_name">#object_name#</span></a>
+    </div>
+    <div class="tf-wrap">
+        <div class="tf-temps"><span title="Thermomètre du bas">⬇️ #temp_in# °C</span><span title="Thermomètre du haut" style="#temp_up_display#">⬆️ #temp_up# °C</span><span title="Extérieur" style="#temp_out_display#">🌳 #temp_out# °C</span><span title="Luminosité extérieure" style="#sun_display#">#sun_icon# #sun# lx</span><span title="Météo : #wx_label#" style="#wx_display#">#wx_icon#</span><span>#season#</span></div>
+        <div class="tf-shed" style="#shed_display#">⚡ #shed_text#</div>
+        <div class="tf-small" style="text-align:center; #solar_display#">#solar_txt#</div>
+
+        <div class="tf-sec" style="#vmc_display#">
+            <div class="tf-head">
+                <span>💨 VMC</span>
+                <span class="tf-toggle #vmc_auto_class#" data-on="#vmc_auto_on_id#" data-off="#vmc_auto_off_id#" data-state="#vmc_auto_state#" title="Mode automatique de la VMC">#vmc_auto_label#</span>
+            </div>
+            <div class="tf-pills">#vmc_pills#</div>
+            <div class="tf-txt">#vmc_reason#</div>
+            <div class="tf-small" style="#bypass_display#">#bypass_txt#</div>
+            <div class="tf-small" style="#preheat_display#">#preheat_txt#</div>
+            <div class="tf-ovr" style="#vmc_override_display#">⏱ #vmc_override# <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#override_stop_id#">Reprendre l'auto</a></div>
+            <div class="tf-actions" style="#boost_display#">Boost : #boost_buttons#
+            </div>
+        </div>
+
+        <div class="tf-sec" style="#heat_display#">
+            <div class="tf-head">
+                <span>🔥 Chauffage <span class="tf-small" style="text-transform:none;">#mode_label#</span></span>
+                <span class="tf-toggle #heat_class#" data-on="#heat_on_cmd_id#" data-off="#heat_off_cmd_id#" data-state="#heat_on_state#" title="Thermostat">#heat_label#</span>
+            </div>
+            <div class="tf-cons-row">
+                <div class="tf-cons-box #normal_active#">
+                    <div class="tf-cons-lab tf-cmd" data-cmd_id="#mode_normal_id#" title="Passer en mode Normal">☀️ Normal</div>
+                    <a class="btn btn-xs btn-default tf-cons" data-which="n" data-delta="-0.5">−</a><span class="tf-cons-val">#consigne#°</span><a class="btn btn-xs btn-default tf-cons" data-which="n" data-delta="0.5">+</a>
+                </div>
+                <div class="tf-cons-box #eco_active#">
+                    <div class="tf-cons-lab tf-cmd" data-cmd_id="#mode_eco_id#" title="Passer en mode ECO">🌙 ECO</div>
+                    <a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="-0.5">−</a><span class="tf-cons-val">#eco#°</span><a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="0.5">+</a>
+                </div>
+            </div>
+            <div class="tf-actions">🔥 Forcer #force_txt# :
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_b1_id#" data-min="#force_min#" title="Chauffer « #b1_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name#</a>
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_b2_display#" title="Chauffer « #b1_name# » et « #b2_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name# + #b2_name#</a>
+            </div>
+            <div class="tf-ovr" style="#force_state_display#">🔥 Forcé : #force_state# <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#heat_force_stop_id#">Arrêter</a></div>
+            #batteries#
+            <div class="tf-small">#lock_txt#</div>
+        </div>
+
+        <div class="tf-sec" style="#filter_display#">
+            <div class="tf-txt">#filter_label# <span class="tf-small">#filter_detail#</span></div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var root = $('.eqLogic[data-eqLogic_uid="#uid#"]');
+            root.find('.tf-cmd').off('click').on('click', function () {
+                var id = $(this).attr('data-cmd_id');
+                if (id) {
+                    jeedom.cmd.execute({ id: id });
+                }
+            });
+            root.find('.tf-toggle').off('click').on('click', function () {
+                var on = $(this).attr('data-state') == '1';
+                var id = on ? $(this).attr('data-off') : $(this).attr('data-on');
+                if (id) {
+                    jeedom.cmd.execute({ id: id });
+                }
+            });
+            root.find('.tf-force').off('click').on('click', function () {
+                var id = $(this).attr('data-cmd_id');
+                if (id) {
+                    jeedom.cmd.execute({ id: id, value: { slider: $(this).attr('data-min') } });
+                }
+            });
+            root.find('.tf-cons').off('click').on('click', function () {
+                // ECO reste au moins #eco_gap# °C sous Normal (le plugin borne aussi).
+                var gap = parseFloat('#eco_gap#'), n = parseFloat('#consigne_raw#'), e = parseFloat('#eco_raw#');
+                var cmin = parseFloat('#c_min#'), cmax = parseFloat('#c_max#');
+                var eco = $(this).attr('data-which') == 'e';
+                var v = Math.round(((eco ? e : n) + parseFloat($(this).attr('data-delta'))) * 2) / 2;
+                v = eco ? Math.max(cmin, Math.min(Math.min(cmax, n) - gap, v)) : Math.max(Math.max(cmin, e) + gap, Math.min(cmax, v));
+                jeedom.cmd.execute({ id: eco ? '#consigne_eco_set_id#' : '#consigne_set_id#', value: { slider: v } });
+            });
+        })();
+    </script>
+</div>
