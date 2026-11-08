@@ -1370,7 +1370,8 @@ function tf_renderStats(a) {
     if (se.length) {
         tf_chart('tf_ch_speed', { period: true,
             title: '{{Pertes selon la vitesse de VMC}}',
-            xAxis: { categories: se.map(function (s) { return '{{Vitesse}} ' + s.speed; }) },
+            subtitle: { text: '{{Refroidissement mesuré les nuits sans chauffage, à vitesse constante (médiane), pour 10 °C d\'écart dedans / dehors.}}' },
+            xAxis: { categories: se.map(function (s) { return '{{Vitesse}} ' + s.speed + (s.n ? '<br><span style="font-size:10px;opacity:.75;">' + s.n + ' {{tranches de nuit}}</span>' : ''); }), labels: { useHTML: true } },
             yAxis: { title: { text: '{{°C/h pour 10 °C d\'écart}}' }, min: 0 },
             legend: { enabled: false },
             tooltip: { valueDecimals: 3, valueSuffix: ' °C/h' },
@@ -1385,15 +1386,21 @@ function tf_renderStats(a) {
     if (sfx && sfx.some(function (x) { return x.tb !== null; })) {
         var skyName = { sun: '☀️ {{Journées ensoleillées}}', mixed: '⛅ {{Journées mitigées}}', grey: '☁️ {{Journées maussades}}' };
         var cats = sfx.map(function (x) {
-            return (skyName[x.type] || x.label) + '<br><span style="font-size:10px;opacity:.75;">' + (x.method == 'days' ? x.days + (x.days > 1 ? ' {{j mesurés}}' : ' {{j mesuré}}') + (x.days_all > x.days ? ' / ' + x.days_all : '') : x.days + ' {{j}} ({{tranches}})') + (x.to !== null && x.to !== undefined ? ' · {{dehors}} ' + tf_fmt(x.to, 0) + ' °C' : '') + (x.sp !== null && x.sp !== undefined ? ' · VMC ' + tf_fmt(x.sp, 1) : '') + '</span>';
+            return (skyName[x.type] || x.label) + '<br><span style="font-size:10px;opacity:.75;">' + (x.method == 'days' ? x.days + (x.days > 1 ? ' {{j mesurés}}' : ' {{j mesuré}}') + (x.days_all > x.days ? ' / ' + x.days_all : '') : x.days + ' {{j}} ({{tranches}})') + (x.to !== null && x.to !== undefined ? ' · {{dehors}} ' + tf_fmt(x.to, 0) + ' °C' : '') + (x.sp !== null && x.sp !== undefined ? ' · VMC ' + tf_fmt(x.sp, 1) : '') + '</span>'
+                + (x.tb_sd !== null && x.tb_sd !== undefined ? '<br><span style="font-size:10px;opacity:.75;">{{d\'un jour à l\'autre}} ± ' + tf_fmt(x.tb_sd * 6, 1) + ' °C</span>' : '');
         });
+        // Écart ensoleillé / mitigé plus petit que la variation d'un jour à l'autre ?
+        var sOf = {}; sfx.forEach(function (x) { sOf[x.type] = x; });
+        var sunNoise = sOf.sun && sOf.mixed && sOf.sun.tb !== null && sOf.mixed.tb !== null && sOf.sun.tb < sOf.mixed.tb && sOf.sun.tb_sd != null && sOf.mixed.tb_sd != null
+            && (sOf.mixed.tb - sOf.sun.tb) < Math.max(sOf.sun.tb_sd, sOf.mixed.tb_sd);
         var colOf = { sun: '#f4c430', mixed: '#a8b5c2', grey: '#6c757d' };
         var pt = function (x, k) { return x[k] === null ? null : { y: Math.round(x[k] * 60) / 10, color: colOf[x.type], opacity: x.days < 3 ? 0.45 : 1 }; };
         var sser = [{ type: 'column', name: '{{Bas}}', data: sfx.map(function (x) { return pt(x, 'tb'); }), borderWidth: 0, dataLabels: { enabled: true, formatter: function () { return (this.y > 0 ? '+' : '') + Highcharts.numberFormat(this.y, 1) + ' °C'; } } }];
         if (q.has_up) { sser.push({ type: 'column', name: '{{Haut}}', data: sfx.map(function (x) { return x.th === null ? null : { y: Math.round(x.th * 60) / 10, color: TF_COLORS.th, opacity: x.days < 3 ? 0.45 : 0.8 }; }), borderWidth: 0, dataLabels: { enabled: true, formatter: function () { return (this.y > 0 ? '+' : '') + Highcharts.numberFormat(this.y, 1) + ' °C'; } } }); }
         tf_chart('tf_ch_sun', { period: true,
             title: '{{Ce que le soleil apporte : hausse de température entre 10h et 16h, chauffage éteint}}',
-            subtitle: { text: (q.has_up ? '{{Barre de couleur : le bas ; barre violette : le haut.}} ' : '') + '{{Barres pâles : moins de 3 jours de ce type, à confirmer.}}' },
+            subtitle: { text: (q.has_up ? '{{Barre de couleur : le bas ; barre violette : le haut.}} ' : '') + '{{Barres pâles : moins de 3 jours de ce type, à confirmer.}} {{Mesure arrêtée dès que la VMC accélère ou que le bypass s\'ouvre pour évacuer la chaleur.}}'
+                + (sunNoise ? '<br><span style="color:#b5652d;">{{Écart ensoleillé / mitigé plus petit que la variation d\'un jour à l\'autre : pas encore significatif.}}</span>' : '') },
             xAxis: { categories: cats, labels: { useHTML: true } },
             yAxis: { title: { text: '{{°C gagnés en 6 h}}' }, plotLines: [{ value: 0, width: 1, color: '#888' }] },
             legend: { enabled: false },

@@ -856,10 +856,10 @@ class ThermoFlair325Report {
         $cats = array();
         $vals = array();
         foreach ($se as $x) {
-            $cats[] = 'Vitesse ' . $x['speed'];
+            $cats[] = 'Vitesse ' . $x['speed'] . (isset($x['n']) ? ' (' . $x['n'] . ' tranches de nuit)' : '');
             $vals[] = $x['loss10'];
         }
-        return self::bars('Pertes selon la vitesse de VMC (°C/h pour 10 °C d\'écart)', $cats, $vals, '2a9d8f', '', $name);
+        return self::bars('Pertes selon la vitesse de VMC (refroidissement de nuit, °C/h pour 10 °C d\'écart)', $cats, $vals, '2a9d8f', '', $name);
     }
 
     /*
@@ -1246,6 +1246,10 @@ class ThermoFlair325Report {
         foreach ($s as $x) {
             if ($x['tb'] !== null) {
                 $vals[] = $x['tb'] * 6;
+                if (isset($x['tb_sd']) && $x['tb_sd'] !== null) {
+                    $vals[] = ($x['tb'] + $x['tb_sd']) * 6;
+                    $vals[] = ($x['tb'] - $x['tb_sd']) * 6;
+                }
             }
         }
         if (!$vals) {
@@ -1263,7 +1267,7 @@ class ThermoFlair325Report {
         }
         $mn = floor($lo / $step) * $step;
         $mx = $mn + 4 * $step;
-        list($im, $box, $sc) = self::frame('Ce que le soleil apporte (bas, de 10h à 16h, chauffage éteint)', $mn, $mx, ' °C', array());
+        list($im, $box, $sc) = self::frame('Ce que le soleil apporte (bas, 10h-16h, sans chauffage)', $mn, $mx, ' °C', array());
         list($L, $T, $R, $B) = $box;
         $Y = function ($v) use ($sc, $T, $B) {
             return $B - ($B - $T) * (($v - $sc[0]) / ($sc[1] - $sc[0]));
@@ -1276,6 +1280,7 @@ class ThermoFlair325Report {
         $soft = self::hex($im, '777777');
         $few = false;
         $byType = array();
+        $sdByType = array();
         foreach ($s as $i => $x) {
             $cx = $L + ($i + 0.5) * $w;
             $sub = (isset($x['method']) && $x['method'] == 'days' ? $x['days'] . ' j mesuré' . ($x['days'] > 1 ? 's' : '') . ((isset($x['days_all']) && $x['days_all'] > $x['days']) ? ' / ' . $x['days_all'] : '') : $x['days'] . ' jour' . ($x['days'] > 1 ? 's' : '') . ' (tranches)') . ($x['to'] !== null ? ' · dehors ' . ThermoFlair325::fmt($x['to'], 0) . ' °C' : '');
@@ -1295,6 +1300,17 @@ class ThermoFlair325Report {
             $x0 = intval($L + $i * $w + $w * 0.25);
             $x1 = intval($L + ($i + 1) * $w - $w * 0.25);
             imagefilledrectangle($im, $x0, intval(min($Y($v), $Y(0))), $x1, intval(max($Y($v), $Y(0))), self::hex($im, $cols[$x['type']], $thin ? 70 : 0));
+            // Moustache : dispersion d'un jour à l'autre (± écart type).
+            if (isset($x['tb_sd']) && $x['tb_sd'] !== null) {
+                $sd = $x['tb_sd'] * 6;
+                $sdByType[$x['type']] = $sd;
+                $wc = self::hex($im, '444444');
+                $ya = intval($Y(max($sc[0], min($sc[1], $v - $sd))));
+                $yb = intval($Y(max($sc[0], min($sc[1], $v + $sd))));
+                imageline($im, intval($cx), $ya, intval($cx), $yb, $wc);
+                imageline($im, intval($cx - 8), $ya, intval($cx + 8), $ya, $wc);
+                imageline($im, intval($cx - 8), $yb, intval($cx + 8), $yb, $wc);
+            }
             $lab = ($v > 0 ? '+' : '') . ThermoFlair325::fmt($v, 1) . ' °C';
             if ($v >= 0) {
                 self::text($im, 12, $cx, $Y($v) - 7, $dark, $lab, true, 'center');
@@ -1305,8 +1321,16 @@ class ThermoFlair325Report {
         imageline($im, $L, intval($Y(0)), $R, intval($Y(0)), self::hex($im, '999999'));
         // Remarque en bas : peu de jours, ou résultat contraire à l'attendu.
         $note = '';
-        if (isset($byType['sun'], $byType['grey']) && $byType['sun'] < $byType['grey']) {
-            $note = 'Les jours maussades montent plus que les ensoleillés : trop peu de jours, ou dehors plus doux ces jours-là. À confirmer avec plus d\'historique.';
+        $noise = function ($a, $b) use ($byType, $sdByType) {
+            // Écart plus petit que la variation d'un jour à l'autre.
+            return isset($sdByType[$a], $sdByType[$b]) && abs($byType[$a] - $byType[$b]) < max($sdByType[$a], $sdByType[$b]);
+        };
+        if (isset($byType['sun'], $byType['mixed']) && $byType['sun'] < $byType['mixed'] && $noise('sun', 'mixed')) {
+            $note = 'Écart plus petit que la variation d\'un jour à l\'autre (traits noirs) : pas encore significatif.';
+        } elseif (isset($byType['sun'], $byType['grey']) && $byType['sun'] < $byType['grey']) {
+            $note = isset($sdByType['sun']) && abs($byType['sun'] - $byType['grey']) < $sdByType['sun']
+                ? 'Écart plus petit que la variation d\'un jour à l\'autre (traits noirs) : pas encore significatif.'
+                : 'Jours maussades au-dessus des ensoleillés : trop peu de jours ou dehors plus doux. À confirmer.';
         } elseif ($few) {
             $note = 'Barres pâles : moins de 3 jours de ce type, résultat à confirmer.';
         }

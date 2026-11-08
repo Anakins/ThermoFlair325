@@ -522,6 +522,23 @@ class ThermoFlair325Stats {
         return array('beta' => $beta, 'r2' => ($ssTot > 0) ? 1 - $ssRes / $ssTot : 0, 'n' => $n);
     }
 
+    // Écart type (échantillon).
+    private static function sd($arr) {
+        $arr = array_values(array_filter($arr, function ($v) {
+            return $v !== null;
+        }));
+        $n = count($arr);
+        if ($n < 2) {
+            return null;
+        }
+        $m = array_sum($arr) / $n;
+        $q = 0;
+        foreach ($arr as $v) {
+            $q += ($v - $m) * ($v - $m);
+        }
+        return sqrt($q / ($n - 1));
+    }
+
     private static function avg($arr) {
         $arr = array_values(array_filter($arr, function ($v) {
             return $v !== null;
@@ -993,11 +1010,31 @@ class ThermoFlair325Stats {
         // ---------- Influence de la vitesse de VMC sur les pertes ----------
         // Déperdition selon la vitesse (issue du modèle, qui sépare l'effet
         // de la VMC de celui du soleil et du chauffage).
+        // Mesure directe : refroidissement des tranches de NUIT sans chauffage
+        // (pas de soleil), à vitesse constante, ramené à l'écart dedans /
+        // dehors. Médiane par vitesse (robuste aux nuits atypiques). Le modèle
+        // global, qui doit séparer chauffage, soleil et VMC à la fois, donnait
+        // des pertes négatives (impossibles) avec peu de jours.
         $speedFx = array();
-        if (!empty($models['bas']['ok']) && !empty($models['bas']['k_speed'])) {
-            foreach ($models['bas']['k_speed'] as $sv => $kv) {
-                $speedFx[] = array('speed' => intval($sv), 'k' => $kv, 'loss10' => round($kv * 10, 3));
+        $byS = array();
+        foreach ($coolEp as $e) {
+            if (!$e['night'] || $e['k'] === null || $e['sp'] === null || abs($e['sp'] - round($e['sp'])) > 0.25) {
+                continue;
             }
+            $byS[intval(round($e['sp']))][] = $e['k'];
+        }
+        ksort($byS);
+        foreach ($byS as $sv => $ks) {
+            if (count($ks) < 2) {
+                continue;
+            }
+            sort($ks);
+            $m = count($ks);
+            $med = ($m % 2) ? $ks[intval($m / 2)] : ($ks[$m / 2 - 1] + $ks[$m / 2]) / 2;
+            if ($med <= 0) {
+                continue;
+            }
+            $speedFx[] = array('speed' => $sv, 'k' => round($med, 5), 'loss10' => round($med * 10, 3), 'n' => $m);
         }
         $res['speed_effect'] = $speedFx;
 
@@ -1522,12 +1559,27 @@ class ThermoFlair325Stats {
             $heat = false;
             $pts = array('tb' => array(), 'th' => array());
             $spv = array();
+            // La mesure s'arrête quand la VMC accélère ou que le bypass s'ouvre
+            // pour évacuer la chaleur : sinon les jours de beau soleil (où la
+            // maison atteint vite la température maximum) paraissent gagner
+            // moins que les jours mitigés.
+            $sp0 = null;
+            $cut = false;
             foreach ($list as $r) {
                 if ((($r['b1'] ?: 0) > 0.05) || (($r['b2'] ?: 0) > 0.05)) {
                     $heat = true;
                     break;
                 }
                 if (intval(date('G', $r['t'])) >= 10) {
+                    if ($sp0 === null && $r['sp'] !== null) {
+                        $sp0 = $r['sp'];
+                    }
+                    if (($sp0 !== null && $r['sp'] !== null && $r['sp'] > $sp0 + 0.5) || ($r['by'] !== null && $r['by'] >= 0.5)) {
+                        $cut = true;
+                    }
+                    if ($cut) {
+                        continue;
+                    }
                     foreach (array('tb', 'th') as $z) {
                         if ($r[$z] !== null) {
                             $pts[$z][] = array($r['t'], $r[$z]);
@@ -1538,11 +1590,13 @@ class ThermoFlair325Stats {
                     }
                 }
             }
-            if ($heat || count($pts['tb']) < 60) {
+            // Au moins 2 h de mesure exploitable (24 points de 5 min).
+            if ($heat || count($pts['tb']) < 24) {
                 continue;
             }
             $sky0 = $list[0]['sky'];
-            $perDay[$sky0][] = array('tb' => self::slope($pts['tb']), 'th' => count($pts['th']) >= 60 ? self::slope($pts['th']) : null, 'sp' => $spv ? self::avg($spv) : null);
+            $perDay[$sky0][] = array('tb' => self::slope($pts['tb']), 'th' => count($pts['th']) >= 24 ? self::slope($pts['th']) : null, 'sp' => $spv ? self::avg($spv) : null,
+                'cut' => $cut, 'h' => count($pts['tb']) / 12);
         }
         $out = array();
         foreach (self::SKY_LABELS as $t => $lab) {
@@ -1563,8 +1617,12 @@ class ThermoFlair325Stats {
                     'method' => 'days',
                     'n' => count($pd),
                     'tb' => self::r(self::avg(array_column($pd, 'tb')), 3),
+                    // Dispersion d'un jour à l'autre (°C/h) : un écart entre
+                    // types plus petit que ça n'est pas encore significatif.
+                    'tb_sd' => count($pd) >= 2 ? self::r(self::sd(array_column($pd, 'tb')), 3) : null,
+                    'cut' => count(array_filter(array_column($pd, 'cut'))),
                     'th' => ($hasUp && $thv) ? self::r(self::avg($thv), 3) : null,
-                    'hours' => count($pd) * 6,
+                    'hours' => round(array_sum(array_column($pd, 'h')), 1),
                     'sp' => $spd ? self::r(self::avg($spd), 1) : null,
                     'kwh_dju' => ($a['dju'] >= 3) ? round($a['kwh'] / $a['dju'], 2) : null,
                     'over' => count($a['over']) >= 12 ? self::r(self::avg($a['over']), 2) : null,
