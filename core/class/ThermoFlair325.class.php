@@ -3853,7 +3853,7 @@ class ThermoFlair325 extends eqLogic {
                     $cmax = floatval($cfg['heat_c_max']);
                     $c = round(floatval($value) * 2) / 2;
                     if ($lid == 'consigne_set') {
-                        $c = max($cmin + self::ECO_GAP, max($h['eco'] + self::ECO_GAP, min($cmax, $c)));
+                        $c = max($cmin, max($h['eco'] + self::ECO_GAP, min($cmax, $c)));
                         if ($c != $h['consigne']) {
                             $h['consigne'] = $c;
                             $this->logAction($msgs, '🌡️ Consigne Normal réglée à ' . self::fmt($c) . ' °C.');

@@ -557,7 +557,7 @@ $months = ThermoFlair325::MONTHS;
                         tf_select('heat_mode_default', '{{Mode au démarrage du plugin}}', array('normal' => '{{☀️ Normal}}', 'eco' => '{{🌙 ECO}}'), '{{Normal : chaque plage utilise sa consigne. ECO (absence, vacances) : on ne chauffe jamais au-dessus de la consigne ECO. Se change ensuite sur le widget ou par scénario.}}', 200);
                         tf_num('heat_consigne', '{{Consigne Normal de départ}}', '°C', 5, 30, 0.5, '{{Température voulue dans les plages « Normal ». Se règle ensuite sur le widget.}}');
                         tf_num('heat_eco', '{{Consigne ECO de départ}}', '°C', 5, 30, 0.5, '{{Température plus basse, pour les plages « ECO », hors plage si choisi, et partout en mode ECO. Au moins 0,5 °C sous Normal.}}');
-                        tf_num('heat_c_min', '{{Consigne réglable de}}', '°C', 5, 30, 0.5, '{{Limites des boutons − / + du widget.}}');
+                        tf_num('heat_c_min', '{{Consigne réglable de}}', '°C', 5, 30, 0.5, '{{Limites des boutons − / + du widget et des curseurs « Régler la consigne Normal » / « Régler la consigne ECO » (Jeedom Connect, scénarios), par pas de 0,5 °C.}}');
                         tf_num('heat_c_max', '{{à}}', '°C', 10, 30, 0.5);
                         tf_num('heat_hyst_low', '{{Allumer quand il manque}}', '{{°C sous la consigne}}', 0, 2, 0.1, '{{Écart sous la consigne qui allume la batterie.}}');
                         tf_num('heat_hyst_high', '{{Éteindre quand on dépasse de}}', '{{°C au-dessus}}', 0, 2, 0.1, '{{Écart au-dessus de la consigne qui éteint la batterie. Entre les deux, elle ne change pas.}}');

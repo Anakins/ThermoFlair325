@@ -3,6 +3,8 @@
 ## 0.9.4 (2026-11-07)
 - **Un nouveau boost remplace bien celui en cours.** Juste après un ordre, la VMC peut encore remonter son ancienne position, ou celle de l'ordre précédent, quand MyModbus lit en retard. Le plugin prenait cet écart pour un réglage manuel, et ce faux réglage remplaçait le boost qu'on venait de lancer. Désormais, pendant 3 min après un ordre de vitesse ou le lancement d'un boost, un écart de position n'est plus pris pour un réglage manuel : le plugin renvoie simplement la bonne vitesse. Un vrai réglage manuel fait ensuite est toujours détecté.
 
+- **Consigne Normal jusqu'au minimum réglé** : le curseur « Régler la consigne Normal » descend maintenant jusqu'à « Consigne réglable de » (avant, 0,5 °C au-dessus). La consigne Normal reste au moins 0,5 °C au-dessus de l'ECO.
+
 ## 0.9.3 (2026-10-30)
 - **Boosts à volonté, dans un tableau** (onglet VMC) : chaque ligne a un nom, une vitesse (1 à 4), une durée (1 à 1440 min) et une case Widget. Chaque ligne crée une **commande action du même nom**, utilisable dans les scénarios. Renommer la ligne renomme la commande, et supprimer la ligne supprime la commande. Les boutons du widget suivent le tableau, avec le nom de la ligne.
 - **Vitesse 4 au-delà de 15 min : avertissement** à côté de la ligne (bruit, air asséché, chaleur perdue en hiver). Ce n'est qu'un conseil : la durée n'est plus plafonnée à 60 min.
