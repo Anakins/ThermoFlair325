@@ -5,6 +5,8 @@
 
 - **Consigne Normal jusqu'au minimum réglé** : le curseur « Régler la consigne Normal » descend maintenant jusqu'à « Consigne réglable de » (avant, 0,5 °C au-dessus). La consigne Normal reste au moins 0,5 °C au-dessus de l'ECO.
 
+- **Efficacité de l'échangeur corrigée (plus de 100 %)** : Brink mesure l'air soufflé et l'air rejeté aux ventilateurs, après l'échangeur. La chaleur des moteurs (environ 1 °C) faisait dépasser 100 % au calcul côté air soufflé et le faisait baisser côté air rejeté. Le plugin fait maintenant la moyenne des deux côtés, ce qui annule ce biais, et plafonne à 100 % quand une seule température est connue. Les statistiques repartent sur ce nouveau calcul : les anciennes valeurs sont ignorées, mais « Importer l'historique » les recalcule si les deux températures sont historisées.
+
 ## 0.9.3 (2026-10-30)
 - **Boosts à volonté, dans un tableau** (onglet VMC) : chaque ligne a un nom, une vitesse (1 à 4), une durée (1 à 1440 min) et une case Widget. Chaque ligne crée une **commande action du même nom**, utilisable dans les scénarios. Renommer la ligne renomme la commande, et supprimer la ligne supprime la commande. Les boutons du widget suivent le tableau, avec le nom de la ligne.
 - **Vitesse 4 au-delà de 15 min : avertissement** à côté de la ligne (bruit, air asséché, chaleur perdue en hiver). Ce n'est qu'un conseil : la durée n'est plus plafonnée à 60 min.

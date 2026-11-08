@@ -33,7 +33,7 @@
 class ThermoFlair325Stats {
 
     const STEP = 300;
-    const FIELDS = array('tb', 'th', 'to', 'b1', 'b2', 'sp', 'pw', 'co2', 'c1', 'c2', 'lx', 'by', 'md', 'k1', 'k2', 'ef', 'ph', 'pp', 'cc', 'rn');
+    const FIELDS = array('tb', 'th', 'to', 'b1', 'b2', 'sp', 'pw', 'co2', 'c1', 'c2', 'lx', 'by', 'md', 'k1', 'k2', 'eg', 'ph', 'pp', 'cc', 'rn');
     /*
      * Type de journée d'après la luminosité. Beaucoup de capteurs saturent
      * (ex. 2000 lux) dès qu'il fait jour clair, même sans soleil direct :
@@ -95,11 +95,12 @@ class ThermoFlair325Stats {
             'c2' => isset($rt['heat']['b2']['target']) ? $rt['heat']['b2']['target'] : null,
             'k1' => isset($rt['heat']['b1']['comfort']) ? $rt['heat']['b1']['comfort'] : null,
             'k2' => isset($rt['heat']['b2']['comfort']) ? $rt['heat']['b2']['comfort'] : null,
-            // Efficacité instantanée de l'échangeur (seulement quand elle a un sens).
-            'ef' => (function () use ($cfg, $ctx) {
+            // Efficacité de l'échangeur (moyenne air soufflé / air rejeté, 0.9.4 ;
+            // l'ancien champ « ef », côté air soufflé seul et biaisé, est ignoré).
+            'eg' => (function () use ($cfg, $ctx) {
                 $why = '';
                 $e = ThermoFlair325::hxEfficiency($cfg, $ctx + array('hx_sup' => null, 'hx_exh' => null, 'preheat' => null, 'bypass' => null), $why);
-                return $e === null ? null : ($e['sup'] !== null ? $e['sup'] : $e['exh']);
+                return $e === null ? null : $e['val'];
             })(),
             'ph' => (isset($ctx['preheat']) && $ctx['preheat'] !== null) ? ($ctx['preheat'] ? 1 : 0) : null,
             'pp' => isset($ctx['preheat_pw']) ? $ctx['preheat_pw'] : null,
@@ -299,7 +300,7 @@ class ThermoFlair325Stats {
                         'hx_sup' => isset($v['hs']) ? $v['hs'] : null, 'hx_exh' => isset($v['he']) ? $v['he'] : null,
                         'bypass' => isset($v['by']) ? ($v['by'] >= 0.5) : null, 'preheat' => isset($v['ph']) ? ($v['ph'] >= 0.5) : null), $why);
                     if ($e !== null) {
-                        $v['ef'] = ($e['sup'] !== null) ? $e['sup'] : $e['exh'];
+                        $v['eg'] = $e['val'];
                     }
                 }
             }
@@ -714,7 +715,7 @@ class ThermoFlair325Stats {
             $d['dju'] = ($d['to_avg'] !== null && count($list) >= 200) ? round(max(0, self::BASE_DJU - $d['to_avg']), 1) : null;
             $d['kwh_dju'] = ($d['dju'] !== null && $d['dju'] >= 1) ? round($d['kwh'] / $d['dju'], 2) : null;
             $d['sp_avg'] = self::r(self::avg(array_column($list, 'sp')), 1);
-            $d['ef_avg'] = self::r(self::avg(array_column($list, 'ef')), 0);
+            $d['ef_avg'] = self::r(self::avg(array_column($list, 'eg')), 0);
             $phv = array_filter(array_column($list, 'ph'), function ($v) {
                 return $v !== null;
             });

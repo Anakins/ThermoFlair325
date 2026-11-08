@@ -1500,7 +1500,12 @@ class ThermoFlair325 extends eqLogic {
         }
         $rt['filter'] += array('last' => null, 'cleaned' => null, 'notified_date' => null, 'dirty' => false);
         $rt['preheat'] += array('on' => null, 'since' => 0, 'pending' => null, 'pending_since' => 0, 'day' => '', 'today_sec' => 0, 'last_t' => 0, 'notified_on' => 0);
-        $rt['hx'] += array('eff' => null, 'eff_exh' => null, 'why' => '');
+        $rt['hx'] += array('eff' => null, 'eff_sup' => null, 'eff_exh' => null, 'why' => '', 'v2' => 0);
+        if (empty($rt['hx']['v2'])) {
+            // 0.9.4 : « eff » était le seul côté air soufflé (biaisé) : on repart.
+            $rt['hx']['eff'] = null;
+            $rt['hx']['v2'] = 1;
+        }
         $rt['shed'] += array('active' => array(), 'at' => 0, 'power' => null);
     }
 
@@ -3060,12 +3065,23 @@ class ThermoFlair325 extends eqLogic {
             $why = 'écart dedans / dehors trop faible (' . self::fmt($T - $O) . ' °C, il faut au moins 5 °C)';
             return null;
         }
-        $res = array('sup' => null, 'exh' => null);
+        $res = array('sup' => null, 'exh' => null, 'val' => null);
         if ($ctx['hx_sup'] !== null) {
             $res['sup'] = max(0, min(110, 100 * ($ctx['hx_sup'] - $O) / ($T - $O)));
         }
         if ($ctx['hx_exh'] !== null) {
             $res['exh'] = max(0, min(110, 100 * ($T - $ctx['hx_exh']) / ($T - $O)));
+        }
+        /*
+         * Brink mesure ces températures aux ventilateurs, après l'échangeur :
+         * la chaleur des moteurs (~1 °C) gonfle le calcul côté air soufflé
+         * (souvent > 100 %) et le baisse côté air rejeté. La moyenne des deux
+         * annule ce biais ; une seule mesure : plafonnée à 100 %.
+         */
+        if ($res['sup'] !== null && $res['exh'] !== null) {
+            $res['val'] = min(100, ($res['sup'] + $res['exh']) / 2);
+        } else {
+            $res['val'] = min(100, $res['sup'] !== null ? $res['sup'] : $res['exh']);
         }
         return $res;
     }
@@ -3097,13 +3113,10 @@ class ThermoFlair325 extends eqLogic {
             $e = self::hxEfficiency($cfg, $ctx, $why);
             if ($e !== null) {
                 // Moyenne glissante (~30 cycles d'une minute).
-                foreach (array('sup' => 'eff', 'exh' => 'eff_exh') as $k => $key) {
+                foreach (array('val' => 'eff', 'sup' => 'eff_sup', 'exh' => 'eff_exh') as $k => $key) {
                     if ($e[$k] !== null) {
                         $x[$key] = ($x[$key] === null) ? $e[$k] : $x[$key] + ($e[$k] - $x[$key]) / 30;
                     }
-                }
-                if ($x['eff'] === null && $x['eff_exh'] !== null) {
-                    $x['eff'] = $x['eff_exh'];
                 }
                 $x['why'] = '';
                 $x['last_t'] = $now;
@@ -3111,7 +3124,7 @@ class ThermoFlair325 extends eqLogic {
                 $x['why'] = $why;
             }
             $T = self::refTemp($cfg, $ctx);
-            $detail = ($x['eff'] !== null ? round($x['eff']) . ' %' . ($x['eff_exh'] !== null && $ctx['hx_sup'] !== null ? ' (contrôle côté air rejeté : ' . round($x['eff_exh']) . ' %)' : '') : 'pas encore calculée')
+            $detail = ($x['eff'] !== null ? round($x['eff']) . ' %' . ($x['eff_exh'] !== null && $x['eff_sup'] !== null ? ' (moyenne côté air soufflé ' . round($x['eff_sup']) . ' % et côté air rejeté ' . round($x['eff_exh']) . ' % : la chaleur des moteurs fausse chaque côté en sens inverse)' : '') : 'pas encore calculée')
                 . ' — air soufflé ' . self::fmt($ctx['hx_sup']) . ' °C' . ($ctx['hx_exh'] !== null ? ', air rejeté ' . self::fmt($ctx['hx_exh']) . ' °C' : '')
                 . ', dehors ' . self::fmt($ctx['temp_out']) . ' °C, dedans ' . self::fmt($T) . ' °C'
                 . ($x['why'] !== '' ? ' — calcul en pause : ' . $x['why'] : '');
