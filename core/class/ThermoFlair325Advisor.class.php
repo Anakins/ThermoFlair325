@@ -126,6 +126,51 @@ class ThermoFlair325Advisor {
      * consigne quand la batterie a une consigne (= elle doit tenir une
      * température), en saison de chauffe.
      */
+    /*
+     * Répartition du temps par écart à la consigne (mêmes moments que
+     * stability()) : trop froid (< −0,5 °C), à la consigne (±0,5 °C),
+     * plus chaud (+0,5 à +5 °C), bien plus chaud (> +5 °C). En % ; null si
+     * moins d'une heure de mesures.
+     */
+    const WARM_HI = 5;
+
+    public static function stabilityBands($rows, $b, $z) {
+        $c = ($b == 'b1') ? 'c1' : 'c2';
+        $kf = ($b == 'b1') ? 'k1' : 'k2';
+        $useK = false;
+        foreach ($rows as $r) {
+            if (isset($r[$kf]) && $r[$kf] !== null) {
+                $useK = true;
+                break;
+            }
+        }
+        $cnt = array('cold' => 0, 'ok' => 0, 'warm' => 0, 'hot' => 0);
+        $n = 0;
+        foreach ($rows as $r) {
+            if ($r[$c] === null || $r[$z] === null || ($useK && ($r[$kf] === null || $r[$kf] < 0.5))) {
+                continue;
+            }
+            $d = $r[$z] - $r[$c];
+            $n++;
+            if ($d < -self::BAND) {
+                $cnt['cold']++;
+            } elseif ($d <= self::BAND) {
+                $cnt['ok']++;
+            } elseif ($d <= self::WARM_HI) {
+                $cnt['warm']++;
+            } else {
+                $cnt['hot']++;
+            }
+        }
+        if ($n < 12) {
+            return null;
+        }
+        foreach ($cnt as $k => $v) {
+            $cnt[$k] = 100 * $v / $n;
+        }
+        return $cnt;
+    }
+
     public static function stability($rows, $b, $z) {
         $c = ($b == 'b1') ? 'c1' : 'c2';
         $kf = ($b == 'b1') ? 'k1' : 'k2';

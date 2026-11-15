@@ -1316,7 +1316,11 @@ function tf_renderStats(a) {
     }
 
     // 4) Refroidissement sans chauffage
-    var ce = (a.cool_episodes || []).filter(function (e) { return e.rate !== null; });
+    // Hors tranches où le plugin évacuait une surchauffe et heures de soleil :
+    // ce ne sont pas des pertes de la maison.
+    var ceAll = (a.cool_episodes || []).filter(function (e) { return e.rate !== null; });
+    var ce = ceAll.filter(function (e) { return !e.evac && !e.sunlit; });
+    var ceOut = ceAll.length - ce.length;
     if (ce.length) {
         var mk = function (night, sunTest) {
             return ce.filter(function (e) { return e.night == night && (q.has_out ? e.gap !== null : true) && (!sunTest || sunTest(e)); })
@@ -1324,7 +1328,7 @@ function tf_renderStats(a) {
         };
         var cser = [{ type: 'scatter', name: '{{nuit}}', data: mk(true), color: TF_COLORS.night }];
         if (q.has_sun) {
-            cser.push({ type: 'scatter', name: '{{jour ensoleillé}}', data: mk(false, function (e) { return e.sky == 'sun'; }), color: TF_COLORS.sun });
+            cser.push({ type: 'scatter', name: '{{jour ensoleillé (matin, soir)}}', data: mk(false, function (e) { return e.sky == 'sun'; }), color: TF_COLORS.sun });
             cser.push({ type: 'scatter', name: '{{jour mitigé ou maussade}}', data: mk(false, function (e) { return e.sky != 'sun'; }), color: TF_COLORS.model });
         } else {
             cser.push({ type: 'scatter', name: '{{jour}}', data: mk(false), color: TF_COLORS.day });
@@ -1337,6 +1341,7 @@ function tf_renderStats(a) {
         }
         tf_chart('tf_ch_cool', { period: true,
             title: '{{Refroidissement sans chauffage}}',
+            subtitle: { text: ceOut ? ceOut + ' {{tranches écartées : soleil entre 9h et 17h (il réchauffe en même temps) ou plugin en train d\'évacuer une surchauffe (bypass ouvert, VMC accélérée). Ce ne sont pas des pertes de la maison.}}' : '' },
             xAxis: { title: { text: q.has_out ? '{{écart intérieur − extérieur (°C)}}' : '{{heure}}' } },
             yAxis: { title: { text: '{{°C perdus / h}}' } },
             tooltip: { pointFormat: '{point.name}<br>{point.x} → <b>{point.y:.3f} °C/h</b>' },

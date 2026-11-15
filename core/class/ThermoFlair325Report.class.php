@@ -83,7 +83,7 @@ class ThermoFlair325Report {
         $pstab = isset($prev['advice']['stability']['b1']) ? $prev['advice']['stability']['b1'] : null;
 
         // Évolution : valeur, valeur précédente, sens favorable.
-        $evo = function ($label, $cur, $old, $unit, $dec, $lowerIsBetter) use ($f) {
+        $evo = function ($label, $cur, $old, $unit, $dec, $lowerIsBetter, $extra = '') use ($f) {
             if ($cur === null) {
                 return null;
             }
@@ -95,15 +95,20 @@ class ThermoFlair325Report {
                 $du = ($unit == ' %') ? ' points' : $unit;
                 $s .= ' (' . $arrow . ' ' . ($diff > 0 ? '+' : '') . $f($diff, $dec) . $du . ' ; avant ' . $f($old, $dec) . $unit . (abs($diff) < 1e-9 ? '' : ($better ? ', mieux' : ', moins bien')) . ')';
             }
-            return $s;
+            // Détail après l'évolution, pour que « avant … mieux » reste à côté du chiffre.
+            return $s . $extra;
         };
         $sum = array_filter(array(
             $evo('Chauffage', $k['kwh_per_day'], $pk ? $pk['kwh_per_day'] : null, ' kWh/jour', 2, true),
             $evo('Consommation par degré-jour', $k['kwh_per_dju'], $pk ? $pk['kwh_per_dju'] : null, ' kWh', 2, true),
-            $stab ? $evo('Température stable (bas, ±0,5 °C)', $stab['in_band'], $pstab ? $pstab['in_band'] : null, ' %', 0, false) : null,
+            // Part du temps où le bas est à ±0,5 °C de sa consigne, quand il doit
+            // la tenir (plages Normal) ; le reste : au-dessus (souvent le soleil) ou en dessous.
+            $stab ? $evo('Bas à sa consigne (à ±0,5 °C près, pendant les plages Normal)', $stab['in_band'], $pstab ? $pstab['in_band'] : null, ' %', 0, false,
+                '. Le reste du temps : au-dessus ' . $stab['over'] . ' %' . (!empty($stab['over_sun']) ? ' (dont ' . $stab['over_sun'] . ' % à cause du soleil)' : '') . ', en dessous ' . $stab['under'] . ' %') : null,
             $stab ? $evo('Écart-type de la température', $stab['std'], $pstab ? $pstab['std'] : null, ' °C', 2, true) : null,
             $evo('Perte par nuit sans chauffage', $k['night_drop'], $pk ? $pk['night_drop'] : null, ' °C', 2, true),
-            !empty($k['solar_h']) ? $evo('Surchauffe due au soleil', $k['solar_h'], $pk ? $pk['solar_h'] : null, ' h', 1, true) : null,
+            !empty($k['solar_h']) ? $evo('Surchauffe due au soleil (bas à ' . $f(floatval($cfg['heat_consigne']) + 2, 1) . ' °C ou plus, soit consigne Normal + 2 °C, sans chauffage)', $k['solar_h'], $pk ? $pk['solar_h'] : null, ' h', 1, true,
+                '. Sur ' . $k['solar_days'] . ' jour(s), jusqu\'à ' . $f($k['solar_max'], 1) . ' °C dedans pour ' . $f($k['solar_to'], 1) . ' °C dehors') : null,
             !empty($k['sky_days']) ? 'Journées : ' . $k['sky_days']['sun'] . ' ensoleillée(s), ' . $k['sky_days']['mixed'] . ' mitigée(s), ' . $k['sky_days']['grey'] . ' maussade(s)' : null,
             'Batteries : « ' . $cfg['b1_name'] . ' » ' . $f($k['b1_hours'], 1) . ' h, « ' . $cfg['b2_name'] . ' » ' . $f($k['b2_hours'], 1) . ' h, total ' . $f($k['kwh_total'], 1) . ' kWh',
         ));
@@ -464,7 +469,7 @@ class ThermoFlair325Report {
         $list = array(
             array('temperatures', 'Températures', function ($n) use ($eq, $cfg, $days) { return self::chartTemps($eq, $cfg, $days, $n); }),
             array('energie', 'Énergie par jour', function ($n) use ($a, $cfg, $days) { return self::chartDaily($a, $cfg, $n, $days); }),
-            array('stabilite', 'Stabilité de la température', function ($n) use ($eq, $a, $cfg, $days) { return self::chartStability($eq, $a, $cfg, $n, $days); }),
+            array('stabilite', 'Écart à la consigne, jour par jour', function ($n) use ($eq, $a, $cfg, $days) { return self::chartStability($eq, $a, $cfg, $n, $days); }),
             array('montee', 'Montée en température pendant la chauffe', function ($n) use ($a, $cfg) { return self::chartHeat($a, $cfg, $n); }, true),
             array('refroidissement', 'Refroidissement sans chauffage', function ($n) use ($a) { return self::chartCool($a, $n); }, true),
             array('journee_type', 'Journée type', function ($n) use ($a, $cfg) { return self::chartProfile($a, $cfg, $n); }, true),
@@ -729,7 +734,7 @@ class ThermoFlair325Report {
         $hasSun = !empty($a['quality']['has_sun']);
         $grp = array('night' => array(), 'sun' => array(), 'day' => array());
         foreach ($ce as $e) {
-            if ($e['rate'] === null || ($hasOut && $e['gap'] === null)) {
+            if ($e['rate'] === null || ($hasOut && $e['gap'] === null) || !empty($e['evac']) || !empty($e['sunlit'])) {
                 continue;
             }
             $k = $e['night'] ? 'night' : (($hasSun && $e['sky'] == 'sun') ? 'sun' : 'day');
@@ -740,7 +745,7 @@ class ThermoFlair325Report {
             $series[] = array('nuit', '264653', $grp['night']);
         }
         if ($grp['sun']) {
-            $series[] = array('jour ensoleillé', 'f4c430', $grp['sun']);
+            $series[] = array('jour ensoleillé (matin, soir)', 'f4c430', $grp['sun']);
         }
         if ($grp['day']) {
             $series[] = array($hasSun ? 'jour mitigé ou maussade' : 'jour', '8ab17d', $grp['day']);
@@ -1189,7 +1194,7 @@ class ThermoFlair325Report {
         return self::save($im, $name);
     }
 
-    // Stabilité jour par jour : part du temps à ±0,5 °C de la consigne (bas).
+    // Jour par jour : répartition du temps du bas par rapport à sa consigne.
     private static function chartStability($eq, $a, $cfg, $name, $days = 14) {
         $from = strtotime(date('Y-m-d', ThermoFlair325::now() - ($days - 1) * 86400));
         $rows = ThermoFlair325Stats::load($eq->getId(), $from, ThermoFlair325::now());
@@ -1202,34 +1207,55 @@ class ThermoFlair325Report {
         }
         $vals = array();
         foreach ($byDay as $day => $list) {
-            $st = ThermoFlair325Advisor::stability($list, 'b1', 'tb');
+            $st = ThermoFlair325Advisor::stabilityBands($list, 'b1', 'tb');
             if ($st !== null) {
-                $vals[$day] = $st['in_band'];
+                $vals[$day] = $st;
             }
         }
         $vals = array_slice($vals, -$days, null, true);
         if (count($vals) < 2) {
             return null;
         }
-        list($im, $box, $sc) = self::frame('Température stable : part du temps à ±0,5 °C de la consigne (bas)', 0, 100, ' %', array(array('85 % et plus', '2a9d8f'), array('60 à 85 %', 'e9c46a'), array('moins de 60 %', 'e76f51'), array('objectif 85 %', 'b5652d')));
+        // Barres empilées : chaque jour = 100 % du temps passé en plage Normal.
+        $bands = array(
+            'cold' => array('trop froid (< −0,5 °C)', '4a90d9'),
+            'ok' => array('consigne ±0,5 °C', '2a9d8f'),
+            'warm' => array('+0,5 à +' . ThermoFlair325Advisor::WARM_HI . ' °C', 'f4a261'),
+            'hot' => array('plus de +' . ThermoFlair325Advisor::WARM_HI . ' °C', 'd62828'),
+        );
+        $legend = array();
+        foreach ($bands as $bd) {
+            $legend[] = array($bd[0], $bd[1]);
+        }
+        list($im, $box, $sc) = self::frame('Température du bas par rapport à sa consigne (plages Normal, % du temps)', 0, 100, ' %', $legend);
         list($L, $T, $R, $B) = $box;
         $n = count($vals);
         $w = ($R - $L) / $n;
         $soft = self::hex($im, '777777');
+        $white = self::hex($im, 'ffffff');
         $i = 0;
         foreach ($vals as $day => $v) {
             $x0 = intval($L + $i * $w + $w * 0.15);
             $x1 = intval($L + ($i + 1) * $w - $w * 0.15);
-            $col = ($v >= 85) ? '2a9d8f' : (($v >= 60) ? 'e9c46a' : 'e76f51');
-            imagefilledrectangle($im, $x0, intval($B - ($B - $T) * $v / 100), $x1, $B, self::hex($im, $col));
+            $acc = 0;
+            foreach ($bands as $key => $bd) {
+                if ($v[$key] <= 0) {
+                    continue;
+                }
+                $yb = $B - ($B - $T) * $acc / 100;
+                $acc += $v[$key];
+                $yt = $B - ($B - $T) * $acc / 100;
+                imagefilledrectangle($im, $x0, intval(round($yt)), $x1, intval(round($yb)) - 1, self::hex($im, $bd[1]));
+                // Pourcentage dans le segment quand il y a la place.
+                if ($yb - $yt >= 16 && $x1 - $x0 >= 26) {
+                    self::text($im, 8, ($x0 + $x1) / 2, ($yt + $yb) / 2 + 4, $white, round($v[$key]) . '%', true, 'center');
+                }
+            }
             if ($n <= 14 || $i % 3 == 0) {
                 self::text($im, 8, ($x0 + $x1) / 2, $B + 14, $soft, substr($day, 8, 2) . '/' . substr($day, 5, 2), false, 'center');
             }
             $i++;
         }
-        imagesetthickness($im, 2);
-        $y85 = intval($B - ($B - $T) * 0.85);
-        imageline($im, $L, $y85, $R, $y85, self::hex($im, 'b5652d'));
         return self::save($im, $name);
     }
 

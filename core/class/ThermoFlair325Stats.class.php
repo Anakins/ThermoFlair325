@@ -826,7 +826,30 @@ class ThermoFlair325Stats {
                 $tin = self::avg(array_column($cur, 'tb'));
                 $mid = intval(date('G', $cur[intval(count($cur) / 2)]['t']));
                 $gap = ($tout !== null) ? $tin - $tout : null;
+                // Tranche où le plugin évacuait une surchauffe (bypass ouvert,
+                // VMC accélérée, surchauffe solaire) : la maison « perd » alors
+                // très vite, mais ce n'est pas une perte de l'enveloppe.
+                $spv = array_values(array_filter(array_column($cur, 'sp'), function ($v) {
+                    return $v !== null;
+                }));
+                $byv = array_values(array_filter(array_column($cur, 'by'), function ($v) {
+                    return $v !== null;
+                }));
+                $warm = false;
+                foreach ($cur as $r) {
+                    if ($r['c1'] !== null && $r['tb'] !== null && $r['tb'] > $r['c1'] + 0.5) {
+                        $warm = true;
+                        break;
+                    }
+                }
+                $evac = ($byv && self::avg($byv) > 0.05) || array_sum(array_column($cur, 'sol')) > 0
+                    || ($warm && $spv && max($spv) - $spv[0] >= 0.5);
+                // En journée ensoleillée ou mitigée, entre 9h et 17h : le soleil
+                // réchauffe en même temps, ce n'est pas un refroidissement.
+                $skyMid = $cur[intval(count($cur) / 2)]['sky'];
+                $sunlit = !($mid >= 21 || $mid < 7) && in_array($skyMid, array('sun', 'mixed'), true) && $mid >= 9 && $mid < 17;
                 $coolEp[] = array(
+                    'evac' => $evac, 'sunlit' => $sunlit,
                     'start' => $cur[0]['t'], 'min' => count($cur) * 5, 'rate' => self::r($slope),
                     'to' => self::r($tout, 1), 'tin' => self::r($tin, 1), 'gap' => self::r($gap, 1),
                     'night' => ($mid >= 21 || $mid < 7), 'hour' => $mid, 'sp' => self::r(self::avg(array_column($cur, 'sp')), 1),
@@ -1018,7 +1041,7 @@ class ThermoFlair325Stats {
         $speedFx = array();
         $byS = array();
         foreach ($coolEp as $e) {
-            if (!$e['night'] || $e['k'] === null || $e['sp'] === null || abs($e['sp'] - round($e['sp'])) > 0.25) {
+            if (!$e['night'] || $e['evac'] || $e['k'] === null || $e['sp'] === null || abs($e['sp'] - round($e['sp'])) > 0.25) {
                 continue;
             }
             $byS[intval(round($e['sp']))][] = $e['k'];
@@ -1241,10 +1264,10 @@ class ThermoFlair325Stats {
             $kpi['solar_to'] = round($mx['to'], 1);
         }
         $cn = array_filter($coolEp, function ($e) {
-            return $e['night'];
+            return $e['night'] && !$e['evac'];
         });
         $cd = array_filter($coolEp, function ($e) {
-            return !$e['night'];
+            return !$e['night'] && !$e['evac'] && !$e['sunlit'];
         });
         if ($cn) {
             $kpi['cool_night'] = round(array_sum(array_column($cn, 'rate')) / count($cn), 3);
