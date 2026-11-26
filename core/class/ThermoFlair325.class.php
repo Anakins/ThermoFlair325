@@ -41,7 +41,7 @@ require_once dirname(__FILE__) . '/ThermoFlair325Brink.class.php';
 class ThermoFlair325 extends eqLogic {
 
     const PLUGIN = 'ThermoFlair325';
-    const VERSION = '0.9.6';
+    const VERSION = '0.9.7';
 
     const ALL_DAYS = array('1', '2', '3', '4', '5', '6', '7');
 
@@ -1319,6 +1319,35 @@ class ThermoFlair325 extends eqLogic {
                         $W['heat'][] = "$n : la batterie « " . $cfg[$b . '_name'] . " » est désactivée, ignorée pour cette plage.";
                     }
                 }
+                $dates = self::slotDates($s);
+                if ($dates !== null) {
+                    $okd = true;
+                    foreach ($dates as $dd) {
+                        $p = DateTime::createFromFormat('Y-m-d', $dd);
+                        if (!$p || $p->format('Y-m-d') !== $dd) {
+                            $okd = false;
+                        }
+                    }
+                    if (!$okd) {
+                        $E['heat'][] = "$n : date invalide.";
+                    } elseif ($dates[1] < $dates[0]) {
+                        $E['heat'][] = "$n : la date de fin est avant la date de début.";
+                    } elseif ($dates[1] < date('Y-m-d', self::now())) {
+                        $W['heat'][] = "$n : terminée le " . date('d/m/Y', strtotime($dates[1])) . ", elle ne s'applique plus. Vous pouvez la supprimer.";
+                    } else {
+                        $days = isset($s['days']) && is_array($s['days']) ? array_map('strval', $s['days']) : array();
+                        $hit = false;
+                        for ($t = strtotime($dates[0]), $k = 0; $t <= strtotime($dates[1]) && $k < 8; $t = strtotime('+1 day', $t), $k++) {
+                            if (in_array(date('N', $t), $days)) {
+                                $hit = true;
+                                break;
+                            }
+                        }
+                        if ($days && !$hit) {
+                            $E['heat'][] = "$n : aucun des jours cochés ne tombe entre le " . date('d/m/Y', strtotime($dates[0])) . " et le " . date('d/m/Y', strtotime($dates[1])) . " : elle ne s'appliquera jamais.";
+                        }
+                    }
+                }
                 if (!isset($s['mode']) || !in_array($s['mode'], array('normal', 'eco', 'comfort', 'consigne', 'forced', 'off'))) {
                     $E['heat'][] = "$n : mode invalide.";
                 } elseif ($s['mode'] == 'consigne' && (!isset($s['consigne']) || !is_numeric($s['consigne']) || floatval($s['consigne']) < 5 || floatval($s['consigne']) > 30)) {
@@ -1969,14 +1998,95 @@ class ThermoFlair325 extends eqLogic {
     /* Chauffage : décision (fonction pure, testable hors Jeedom)        */
     /* ================================================================ */
 
-    public static function activeSlot($cfg, $b, $nowMin, $dow) {
+    /*
+     * Plages datées (vacances, jour de télétravail…) : une plage de chauffage
+     * peut avoir une date de début et de fin (« Du » / « Au »). Elle ne vaut
+     * qu'entre ces dates, sur ses jours cochés. Un jour couvert par une plage
+     * datée d'une batterie, les plages permanentes de cette batterie sont
+     * ignorées toute la journée : la plage datée remplace le programme du jour.
+     */
+    // [du, au] (Y-m-d) d'une plage datée, null pour une plage permanente.
+    public static function slotDates($row) {
+        $f = isset($row['date_from']) ? trim((string) $row['date_from']) : '';
+        $t = isset($row['date_to']) ? trim((string) $row['date_to']) : '';
+        if ($f === '' && $t === '') {
+            return null;
+        }
+        if ($f === '') {
+            $f = $t;
+        }
+        if ($t === '') {
+            $t = $f;
+        }
+        return array($f, $t);
+    }
+
+    // Plage datée de la batterie $b qui couvre le jour $dayTs (null sinon).
+    public static function datedDay($cfg, $b, $dayTs) {
+        $day = date('Y-m-d', $dayTs);
+        $dow = date('N', $dayTs);
+        foreach ($cfg['heat_slots'] as $s) {
+            $dates = self::slotDates($s);
+            if ($dates === null) {
+                continue;
+            }
+            $bats = isset($s['batteries']) && is_array($s['batteries']) ? $s['batteries'] : array();
+            $days = isset($s['days']) && is_array($s['days']) ? array_map('strval', $s['days']) : array();
+            if (in_array($b, $bats) && in_array($dow, $days) && $day >= $dates[0] && $day <= $dates[1]) {
+                return $s;
+            }
+        }
+        return null;
+    }
+
+    // La plage s'applique-t-elle à la batterie $b le jour $dayTs (jour où
+    // elle commence) ?
+    public static function slotAppliesOn($cfg, $row, $b, $dayTs) {
+        $days = isset($row['days']) && is_array($row['days']) ? array_map('strval', $row['days']) : array();
+        if (!in_array(date('N', $dayTs), $days)) {
+            return false;
+        }
+        $dates = self::slotDates($row);
+        if ($dates !== null) {
+            $day = date('Y-m-d', $dayTs);
+            return $day >= $dates[0] && $day <= $dates[1];
+        }
+        return self::datedDay($cfg, $b, $dayTs) === null;
+    }
+
+    // Plage active maintenant pour la batterie $b (dates comprises).
+    public static function slotActiveAt($cfg, $row, $b, $now) {
+        $start = self::hm2min(isset($row['start']) ? $row['start'] : '');
+        $end = self::hm2min(isset($row['end']) ? $row['end'] : '');
+        if ($start === null || $end === null || $start == $end) {
+            return false;
+        }
+        $nowMin = self::nowMin($now);
+        $today = strtotime(date('Y-m-d', $now));
+        if ($start < $end) {
+            if ($nowMin < $start || $nowMin >= $end) {
+                return false;
+            }
+            $occ = $today;
+        } elseif ($nowMin >= $start) {
+            $occ = $today;
+        } elseif ($nowMin < $end) {
+            $occ = strtotime('-1 day', $today);
+        } else {
+            return false;
+        }
+        return self::slotAppliesOn($cfg, $row, $b, $occ);
+    }
+
+    public static function activeSlot($cfg, $b, $nowMin, $dow, $now = null) {
         $hits = array();
         foreach ($cfg['heat_slots'] as $s) {
             $bats = isset($s['batteries']) && is_array($s['batteries']) ? $s['batteries'] : array();
             if (!in_array($b, $bats)) {
                 continue;
             }
-            if (self::slotActive($s, $nowMin, $dow)) {
+            $act = ($now !== null) ? self::slotActiveAt($cfg, $s, $b, $now) : (self::slotDates($s) === null && self::slotActive($s, $nowMin, $dow));
+            if ($act) {
                 $hits[] = $s;
             }
         }
@@ -2048,7 +2158,7 @@ class ThermoFlair325 extends eqLogic {
             $lock = self::nightLock($cfg, $h, $now);
             if ($lock !== null) {
                 // Ce qui aurait demandé de chauffer : plage active ou forçage.
-                $sl = self::activeSlot($cfg, $b, $nowMin, $dow);
+                $sl = self::activeSlot($cfg, $b, $nowMin, $dow, $now);
                 $conflict = null;
                 if (!empty($h['force'][$b]) && $now < intval($h['force'][$b])) {
                     $conflict = 'chauffage forcé';
@@ -2086,7 +2196,7 @@ class ThermoFlair325 extends eqLogic {
                 continue;
             }
             $r = $base;
-            $slot = self::activeSlot($cfg, $b, $nowMin, $dow);
+            $slot = self::activeSlot($cfg, $b, $nowMin, $dow, $now);
             $r['slot'] = $slot;
             // Mode global ECO (absence, vacances...) : tout ce qui chauffait en
             // Normal passe en ECO, une consigne fixe est plafonnée à ECO et la

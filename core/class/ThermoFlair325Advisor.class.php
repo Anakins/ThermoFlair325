@@ -346,7 +346,7 @@ class ThermoFlair325Advisor {
                 $delays = array();
                 $deficits = array();
                 for ($d = $from; $d <= $to; $d += 86400) {
-                    if (!in_array((string) date('N', $d), array_map('strval', isset($s['days']) ? $s['days'] : array()))) {
+                    if (!ThermoFlair325::slotAppliesOn($cfg, $s, $b, $d)) {
                         continue;
                     }
                     $t0 = intval(floor(($d + $st * 60) / ThermoFlair325Stats::STEP) * ThermoFlair325Stats::STEP);

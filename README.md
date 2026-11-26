@@ -118,6 +118,7 @@ Les boosts se règlent dans un **tableau** de l'onglet VMC : autant de lignes qu
   Elles servent aux présences, au matin et au soir. Hors plage, chaque batterie est **éteinte**, en **ECO** ou en **Normal**. Par défaut :
   - le bas est en Normal (20,5 °C) de 6h30 à 22h30, et en ECO (19 °C) le reste du temps ;
   - le haut chauffe à 19,5 °C au lever (6h30 à 7h30 en semaine) et au coucher (19h45 à 21h), et reste éteint le reste du temps.
+- **Plages datées (vacances, télétravail).** Une plage peut avoir une date de début et de fin (colonne « Dates »). Elle ne vaut qu'entre ces dates, sur ses jours cochés. Les jours qu'elle couvre, elle **remplace toutes les plages permanentes des mêmes batteries** : par exemple, une plage « Vacances » du lundi au vendredi 8h00 → 23h30 pour le bas remplace ces jours-là « Journée travail matin » et « Journée travail soir ». Pour un jour de télétravail, mettez la même date dans les deux cases. Après la date de fin, la plage ne s'applique plus ; « Vérifier la configuration » propose de la supprimer. La liste des plages datées et leur état (à venir, en cours, terminée) s'affiche sous le tableau.
 - **Anti court-cycle** : marche minimum, arrêt minimum, marche continue maximum avec pause.
 - **Appoint automatique** : la batterie du haut aide celle du bas quand celle-ci n'y arrive pas. Jamais pendant sa propre plage.
 - **Sécurités** :

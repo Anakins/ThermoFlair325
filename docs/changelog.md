@@ -1,5 +1,8 @@
 # Changelog ThermoFlair 325
 
+## 0.9.7 (2026-11-26)
+- **Plages de chauffage datées** (vacances, jour de télétravail). Nouvelle colonne « Dates » : vide, la plage vaut toutes les semaines comme avant ; avec une date de début et de fin, elle ne vaut qu'entre ces dates, sur ses jours cochés, et remplace ces jours-là les plages permanentes des mêmes batteries. Une seule journée : même date dans les deux cases (la date de fin se remplit seule). Après la date de fin, elle ne s'applique plus. Sous le tableau, la liste des plages datées avec leur état (à venir, en cours, terminée) ; la semaine type ne montre que les plages permanentes. Contrôles : date de fin avant le début, aucun jour coché dans la période, plage terminée à supprimer. Les conseils d'anticipation ne comptent plus les jours remplacés.
+
 ## 0.9.6 (2026-11-26)
 - **Ajouter le haut à un forçage en cours.** Pendant un forçage du bas, allumer le haut l'ajoute au forçage jusqu'à la même heure de fin : il chauffe lui aussi quelle que soit la température, et les deux batteries s'arrêtent ensemble. Trois façons de le faire : le bouton « + Haut » qui apparaît pendant le forçage (widget et récapitulatif), la commande « Forcer les deux batteries », ou l'allumage à la main de la batterie (interrupteur, commande Jeedom) si sa commande d'état est renseignée. Avant, le haut allumé à la main était éteint au cycle suivant si sa consigne était atteinte, et « Bas + Haut » relançait les deux pour une durée complète.
 

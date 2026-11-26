@@ -213,6 +213,7 @@ function tf_arraysConfig() {
         var $tr = $(this);
         slots.push({
             label: $tr.find('.s_label').val(), batteries: tf_checked($tr, 's_bat'), days: tf_checked($tr, 'd_day'),
+            date_from: $tr.find('.s_dfrom').val() || '', date_to: $tr.find('.s_dto').val() || '',
             start: $tr.find('.s_start').val(), end: $tr.find('.s_end').val(), mode: $tr.find('.s_mode').val(), consigne: $tr.find('.s_consigne').val()
         });
     });
@@ -393,6 +394,8 @@ function tf_addSlot(s) {
         $tr.find('.s_bat[value=' + b + ']').prop('checked', true);
     });
     $tr.find('.tf-days').html(tf_daysHtml(s.days));
+    $tr.find('.s_dfrom').val(s.date_from || '');
+    $tr.find('.s_dto').val(s.date_to || '');
     $tr.find('.s_start').val(s.start || '');
     $tr.find('.s_end').val(s.end || '');
     $tr.find('.s_mode').val((!s.mode || s.mode == 'comfort') ? 'normal' : s.mode);
@@ -450,6 +453,12 @@ $(document).on('click.tf', '.bt_tfRemoveRow', function () {
     $(this).closest('tr').remove();
     tf_renderWeek();
     tf_refreshLive();
+});
+$(document).on('change.tf', '.s_dfrom', function () {
+    var $tr = $(this).closest('tr'), f = $(this).val(), t = $tr.find('.s_dto').val();
+    if (f && (!t || t < f)) {
+        $tr.find('.s_dto').val(f).trigger('change');
+    }
 });
 $(document).on('change.tf', '.s_mode', function () {
     tf_slotModeChanged($(this).closest('tr'));
@@ -544,13 +553,64 @@ function tf_conflicts() {
 /* ------------------------------------------------------------------ */
 /* Aperçu de la semaine                                                  */
 /* ------------------------------------------------------------------ */
+// Plages datées : [du, au] (AAAA-MM-JJ) ou null.
+function tf_slotDates(r) {
+    var f = (r.date_from || '').trim(), t = (r.date_to || '').trim();
+    if (!f && !t) {
+        return null;
+    }
+    return [f || t, t || f];
+}
+
+function tf_fmtDate(d) {
+    var p = d.split('-'), j = ['{{dim.}}', '{{lun.}}', '{{mar.}}', '{{mer.}}', '{{jeu.}}', '{{ven.}}', '{{sam.}}'];
+    var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    return j[dt.getDay()] + ' ' + p[2] + '/' + p[1];
+}
+
+function tf_today() {
+    var n = new Date(), z = function (x) { return (x < 10 ? '0' : '') + x; };
+    return n.getFullYear() + '-' + z(n.getMonth() + 1) + '-' + z(n.getDate());
+}
+
+// Liste des plages datées sous le tableau, et état sur chaque ligne.
+function tf_renderDated(slots) {
+    var today = tf_today(), names = { 1: 'L', 2: 'Ma', 3: 'Me', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }, items = [];
+    $('#table_tf_slots tbody tr').each(function (i) {
+        var r = slots[i], $st = $(this).find('.s_dstate');
+        var dd = r ? tf_slotDates(r) : null;
+        if (!dd) {
+            $st.html('');
+            return;
+        }
+        var state, cls = '';
+        if (dd[1] < dd[0]) {
+            state = '<span class="tf-ko">{{fin avant le début}}</span>';
+        } else if (dd[1] < today) {
+            state = '<span class="text-muted">{{terminée}}</span>';
+            cls = 'tf-dpast';
+        } else if (dd[0] <= today) {
+            state = '<span class="tf-ok"><b>{{en cours}}</b></span>';
+        } else {
+            state = '<span style="color:#e67e22;">{{à venir}}</span>';
+        }
+        $st.html(state);
+        var bats = (r.batteries || []).map(tf_batName).join(' + ');
+        var days = (r.days || []).map(function (d) { return names[d]; }).join(' ');
+        var when = dd[0] == dd[1] ? '{{le}} ' + tf_fmtDate(dd[0]) : '{{du}} ' + tf_fmtDate(dd[0]) + ' {{au}} ' + tf_fmtDate(dd[1]) + ' (' + days + ')';
+        items.push('<li class="' + cls + '"><b>' + tf_esc(r.label || '{{Plage datée}}') + '</b> — ' + when + ', ' + tf_esc(r.start) + ' → ' + tf_esc(r.end) + ' — ' + tf_esc(bats) + ' — ' + state + '</li>');
+    });
+    $('#tf_dated').html(items.length ? '<b><i class="fas fa-calendar-day"></i> {{Plages datées}}</b> <span class="tf-small">{{(les jours couverts, elles remplacent les plages permanentes des mêmes batteries ; elles ne figurent pas dans la semaine type ci-dessous)}}</span><ul>' + items.join('') + '</ul>' : '');
+}
+
 function tf_renderWeek() {
     var $w = $('#tf_week');
     if (!$w.length) {
         return;
     }
     var cfg = tf_arraysConfig();
-    var slotSegs = tf_segments(cfg.heat_slots);
+    var slotSegs = tf_segments(cfg.heat_slots.filter(function (r) { return !tf_slotDates(r); }));
+    tf_renderDated(cfg.heat_slots);
     var winSegs = tf_segments(cfg.vmc_windows);
     var quietSegs = tf_segments(cfg.vmc_quiet);
     var cN = tf_val('heat_consigne'), cE = tf_val('heat_eco');
@@ -593,7 +653,7 @@ function tf_renderWeek() {
         html += '</div></div></div>';
     }
     html += '<div class="tf-week-scale"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>';
-    html += '<div class="help-block">{{Chaque jour : ligne 1 =}} « ' + tf_esc(tf_batName('b1')) + ' », {{ligne 2 =}} « ' + tf_esc(tf_batName('b2')) + ' », {{ligne 3 = VMC (silence / plages). Survolez un bloc pour le détail.}}</div>';
+    html += '<div class="help-block">{{Chaque jour : ligne 1 =}} « ' + tf_esc(tf_batName('b1')) + ' », {{ligne 2 =}} « ' + tf_esc(tf_batName('b2')) + ' », {{ligne 3 = VMC (silence / plages). Semaine type : plages permanentes seulement. Survolez un bloc pour le détail.}}</div>';
     $w.html(html);
 }
 

@@ -118,6 +118,11 @@ $months = ThermoFlair325::MONTHS;
     #div_tf .tf-bat-panel { border: 1px solid rgba(128,128,128,.35); border-radius: 6px; padding: 10px 10px 0 10px; margin-bottom: 12px; }
     #div_tf .tf-bat-panel legend { font-size: 1.05em; }
     #div_tf .tf-week { margin: 6px 15px 16px 15px; }
+    #div_tf .tf-dated { margin: 8px 15px 0 15px; }
+    #div_tf td.tf-dates .tf-inline { flex-wrap: nowrap; white-space: nowrap; }
+    #div_tf td.tf-dates input[type=date] { width: 128px !important; padding-left: 4px; padding-right: 2px; }
+    #div_tf .tf-dated ul { margin: 2px 0 0 0; padding-left: 18px; }
+    #div_tf .tf-dated .tf-dpast { opacity: .55; }
     #div_tf .tf-week-row { display: flex; align-items: center; padding: 5px 0; border-top: 1px solid rgba(128,128,128,.25); }
     #div_tf .tf-week-row:first-of-type { border-top: none; }
     #div_tf .tf-week-day { width: 32px; font-weight: bold; }
@@ -643,15 +648,17 @@ $months = ThermoFlair325::MONTHS;
                             <ul><li><b>{{Normal}}</b> / <b>{{ECO}}</b> : {{consigne Normal ou ECO du widget ;}}</li>
                             <li><b>{{Consigne fixe}}</b> : {{une température à part (ex. chambres à 19,5 °C) ;}}</li>
                             <li><b>{{Marche forcée}}</b> : {{chauffe toute la plage ;}} <b>{{Arrêt}}</b> : {{ne chauffe pas.}}</li></ul>
+                            <div class="tf-rule">{{Plages datées (vacances, jour de télétravail) : remplissez « Dates ». Les jours couverts, elles remplacent les plages permanentes des mêmes batteries, puis s'arrêtent seules après la date de fin.}}</div>
                             <div class="tf-rule" style="margin-top:4px;">{{Mode ECO activé (widget) : on ne dépasse jamais la consigne ECO. Arrêt reste Arrêt.}}<?php echo tf_tip('{{Si deux plages se chevauchent : Arrêt, puis Marche forcée, puis Normal, puis la consigne fixe la plus haute, puis ECO. Une plage peut passer minuit (ex. 22:00 → 06:00).}}'); ?></div>
                         </div>
                         <table class="table table-condensed tf-rows" id="table_tf_slots">
-                            <thead><tr><th>{{Nom}}</th><th>{{Batteries}}</th><th>{{Jours}}</th><th>{{De}}</th><th>{{À}}</th><th>{{Mode}}</th><th>{{Consigne}}</th><th></th></tr></thead>
+                            <thead><tr><th>{{Nom}}</th><th>{{Batteries}}</th><th>{{Jours}}</th><th>{{Dates}}<?php echo tf_tip('{{Facultatif. Vide : la plage vaut toutes les semaines. Avec des dates (vacances, jour de télétravail…) : elle ne vaut qu\'entre ces deux dates, sur ses jours cochés, et remplace ces jours-là toutes les plages permanentes des mêmes batteries. Pour une seule journée, mettez la même date dans les deux cases. Une fois la date de fin passée, la plage ne s\'applique plus.}}'); ?></th><th>{{De}}</th><th>{{À}}</th><th>{{Mode}}</th><th>{{Consigne}}</th><th></th></tr></thead>
                             <tbody></tbody>
                         </table>
                         <div style="margin-left:15px;">
                             <a class="btn btn-default btn-sm" id="bt_tfAddSlot"><i class="fas fa-plus"></i> {{Ajouter une plage}}</a>
                         </div>
+                        <div class="tf-dated" id="tf_dated"></div>
                         <div class="tf-week" id="tf_week"></div>
                     </fieldset>
                 </form>
@@ -1056,6 +1063,7 @@ $months = ThermoFlair325::MONTHS;
             <label><input type="checkbox" class="s_bat" value="b2"> <span class="s_bat_name" data-bat="b2">Haut</span></label>
         </td>
         <td class="tf-days"></td>
+        <td class="tf-dates"><div class="tf-inline"><span>{{du}}</span><input type="date" class="form-control input-sm s_dfrom" style="width:140px;"><span>{{au}}</span><input type="date" class="form-control input-sm s_dto" style="width:140px;"></div><div class="s_dstate tf-small"></div></td>
         <td><input type="time" class="form-control input-sm s_start"></td>
         <td><input type="time" class="form-control input-sm s_end"></td>
         <td><select class="form-control input-sm s_mode"><option value="normal">{{Normal}}</option><option value="eco">{{ECO}}</option><option value="consigne">{{Consigne fixe}}</option><option value="forced">{{Marche forcée}}</option><option value="off">{{Arrêt}}</option></select></td>
