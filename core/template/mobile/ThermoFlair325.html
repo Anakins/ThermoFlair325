@@ -44,7 +44,6 @@
     <div class="widget-name">
         <span class="warning" title="#alert_name#"><i class="#alert_icon#"></i></span>
         <span class="tf-cmd pull-right cursor" title="Rafraîchir" data-cmd_id="#refresh_id#"><i class="fas fa-sync"></i></span>
-        <span class="reportModeVisible">#name_display# <span class="object_name">#object_name#</span></span>
         <a href="#eqLink#" class="reportModeHidden">#name_display# <span class="object_name">#object_name#</span></a>
     </div>
     <div class="tf-wrap">
@@ -81,11 +80,11 @@
                     <a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="-0.5">−</a><span class="tf-cons-val">#eco#°</span><a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="0.5">+</a>
                 </div>
             </div>
-            <div class="tf-actions">🔥 Forcer #force_txt# :
-                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_b1_id#" data-min="#force_min#" title="Chauffer « #b1_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name#</a>
-                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_b2_display#" title="Chauffer « #b1_name# » et « #b2_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name# + #b2_name#</a>
+            <div class="tf-actions" style="#force_btn_display#">🔥 Forcer #force_txt# :
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_b1_id#" data-min="#force_min#" title="Chauffer « #b1_name# » pendant #force_txt#, quelle que soit la température">#b1_name#</a>
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_b2_display#" title="Chauffer « #b1_name# » et « #b2_name# » pendant #force_txt#, quelle que soit la température">#b1_name# + #b2_name#</a>
             </div>
-            <div class="tf-ovr" style="#force_state_display#">🔥 Forcé : #force_state# <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#heat_force_stop_id#">Arrêter</a></div>
+            <div class="tf-ovr" style="#force_state_display#">🔥 Forcé : #force_state# <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_add_display#" title="Ajouter « #b2_name# » au forçage : il chauffe jusqu'à la même heure de fin, quelle que soit la température">+ #b2_name#</a> <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#heat_force_stop_id#">Arrêter</a></div>
             #batteries#
             <div class="tf-small">#lock_txt#</div>
         </div>

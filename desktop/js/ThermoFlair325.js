@@ -1069,7 +1069,7 @@ function tf_renderDiag(res) {
         h += ' — {{ECO}} <b>' + tf_fmt(parseFloat(rt.eco)) + ' °C</b> ';
         h += tf_cmdButton('consigne_eco_set', '−0,5', 'btn-default', parseFloat(rt.eco) - 0.5) + tf_cmdButton('consigne_eco_set', '+0,5', 'btn-default', parseFloat(rt.eco) + 0.5);
         h += '<br>🛡️ {{Verrou de nuit}} : <b>' + (rt.lock == 1 ? '{{actif}}' : '{{DÉSACTIVÉ}}') + '</b> ' + (rt.lock == 1 ? tf_cmdButton('night_lock_off', '{{Désactiver}}') : tf_cmdButton('night_lock_on', '{{Activer}}', 'btn-success'));
-        h += '<br>🔥 {{Chauffage forcé}} : ' + (rt.force ? '<b>' + tf_esc(rt.force) + '</b> ' + tf_cmdButton('heat_force_stop', '{{Arrêter}}') : '{{aucun}} ' + tf_cmdButton('heat_force_b1', '{{Forcer le bas}} ' + (tf_num('heat_force_default') || 60) + ' min', 'btn-danger', tf_num('heat_force_default') || 60));
+        h += '<br>🔥 {{Chauffage forcé}} : ' + (rt.force ? '<b>' + tf_esc(rt.force) + '</b> ' + (rt.force_add_b2 == 1 ? tf_cmdButton('heat_force_all', '{{Ajouter}} ' + tf_esc(rt.b2_name || '{{le haut}}'), 'btn-danger', tf_num('heat_force_default') || 60) : '') + tf_cmdButton('heat_force_stop', '{{Arrêter}}') : '{{aucun}} ' + tf_cmdButton('heat_force_b1', '{{Forcer le bas}} ' + (tf_num('heat_force_default') || 60) + ' min', 'btn-danger', tf_num('heat_force_default') || 60));
         if (d.heat.cap) {
             h += '<br><span class="tf-warn"><i class="fas fa-moon"></i> {{Plage de silence}} « ' + tf_esc(d.heat.cap.label) + ' » : VMC max ' + d.heat.cap.max + ' {{jusqu\'à}} ' + tf_esc(d.heat.cap.end) + '</span>';
         }

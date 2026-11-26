@@ -1,5 +1,14 @@
 # Changelog ThermoFlair 325
 
+## 0.9.6 (2026-11-26)
+- **Ajouter le haut à un forçage en cours.** Pendant un forçage du bas, allumer le haut l'ajoute au forçage jusqu'à la même heure de fin : il chauffe lui aussi quelle que soit la température, et les deux batteries s'arrêtent ensemble. Trois façons de le faire : le bouton « + Haut » qui apparaît pendant le forçage (widget et récapitulatif), la commande « Forcer les deux batteries », ou l'allumage à la main de la batterie (interrupteur, commande Jeedom) si sa commande d'état est renseignée. Avant, le haut allumé à la main était éteint au cycle suivant si sa consigne était atteinte, et « Bas + Haut » relançait les deux pour une durée complète.
+
+## 0.9.5 (2026-11-25)
+- **Widget mobile** : le nom de l'équipement ne s'affiche plus deux fois dans le titre.
+- **Widget ordinateur** : les boutons gardent leurs couleurs (orange pour un boost en vitesse 4, bleu pour une autre vitesse, rouge pour le forçage). Le thème du dashboard les mettait en gris.
+- **Numéro de version** : `info.json` affichait encore 0.9.1 (Jeedom et `maj_plugin.sh` montraient une version fausse). La description parle maintenant des boosts à volonté.
+- **Chauffage forcé : chauffe quelle que soit la température.** Avant, le forçage chauffait seulement jusqu'à la consigne Normal, et s'arrêtait donc tout de suite si elle était déjà atteinte. Maintenant, la batterie chauffe pendant toute la durée, consigne ignorée, même hors plage, en mode ECO, hors saison de chauffe ou au-dessus de la température extérieure maximum. Les sécurités l'arrêtent toujours : température de sécurité de la batterie, verrou de nuit, délestage, capteur illisible, pause de protection, vitesse minimum de la VMC. Le thermostat OFF empêche toujours de forcer.
+
 ## 0.9.4 (2026-11-07)
 - **Un nouveau boost remplace bien celui en cours.** Juste après un ordre, la VMC peut encore remonter son ancienne position, ou celle de l'ordre précédent, quand MyModbus lit en retard. Le plugin prenait cet écart pour un réglage manuel, et ce faux réglage remplaçait le boost qu'on venait de lancer. Désormais, pendant 3 min après un ordre de vitesse ou le lancement d'un boost, un écart de position n'est plus pris pour un réglage manuel : le plugin renvoie simplement la bonne vitesse. Un vrai réglage manuel fait ensuite est toujours détecté.
 

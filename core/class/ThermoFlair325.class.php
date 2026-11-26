@@ -41,7 +41,7 @@ require_once dirname(__FILE__) . '/ThermoFlair325Brink.class.php';
 class ThermoFlair325 extends eqLogic {
 
     const PLUGIN = 'ThermoFlair325';
-    const VERSION = '0.9.4';
+    const VERSION = '0.9.6';
 
     const ALL_DAYS = array('1', '2', '3', '4', '5', '6', '7');
 
@@ -300,9 +300,9 @@ class ThermoFlair325 extends eqLogic {
         'heat_on' => '1 = le thermostat est actif. 0 = chauffage coupé.',
         'heat_on_cmd' => 'Active le thermostat.',
         'heat_off_cmd' => 'Coupe le thermostat (et éteint les batteries si l\'option est cochée).',
-        'heat_force' => 'Force le chauffage pour une durée. Titre = « bas » (batterie 1) ou « tout » (les deux) ; message = durée (ex. 90, 1h, 1h30). Chauffe jusqu\'à la consigne Normal, même hors plage et en mode ECO.',
-        'heat_force_b1' => 'Force la batterie 1 (bas) pendant le nombre de minutes donné (curseur), jusqu\'à la consigne Normal.',
-        'heat_force_all' => 'Force les deux batteries pendant le nombre de minutes donné (curseur), jusqu\'à la consigne Normal.',
+        'heat_force' => 'Force le chauffage pour une durée. Titre = « bas » (batterie 1) ou « tout » (les deux) ; message = durée (ex. 90, 1h, 1h30). Chauffe pendant toute la durée, quelle que soit la température (consigne ignorée, même hors plage, en mode ECO ou hors saison) ; seuls la température de sécurité, le verrou de nuit et le délestage l\'arrêtent.',
+        'heat_force_b1' => 'Force la batterie 1 (bas) pendant le nombre de minutes donné (curseur), quelle que soit la température (arrêt seulement à la température de sécurité).',
+        'heat_force_all' => 'Force les deux batteries pendant le nombre de minutes donné (curseur), quelle que soit la température (arrêt seulement à la température de sécurité). Pendant un forçage déjà en cours, ajoute la batterie manquante jusqu\'à la même heure de fin : les deux s\'arrêtent ensemble.',
         'heat_force_stop' => 'Arrête tout de suite le chauffage forcé.',
         'heat_force_state' => 'Chauffage forcé en cours (batteries et heure de fin), vide sinon.',
         'night_lock' => '1 = verrou de nuit actif : aucune batterie ne chauffe sur le créneau de nuit (sauf hors-gel).',
@@ -2037,6 +2037,11 @@ class ThermoFlair325 extends eqLogic {
             }
             $hb = $h[$b];
             $actual = $hb['actual'];
+            // Chauffage forcé : chauffe quelle que soit la température (même
+            // consigne atteinte, hors saison ou dehors trop doux). Restent
+            // prioritaires : thermostat OFF, verrou de nuit, délestage, capteur
+            // illisible, température de sécurité, pause de protection, VMC.
+            $forced = !empty($h['force'][$b]) && $now < intval($h['force'][$b]) && !empty($h['on']);
             $T = $ctx[$b . '_temp'];
             $safety = floatval($cfg[$b . '_safety']);
             $base = array('want' => false, 'urgent' => false, 'reason' => '', 'consigne' => null, 'slot' => null, 'mode' => null, 'lock' => false, 'lock_conflict' => null);
@@ -2064,7 +2069,7 @@ class ThermoFlair325 extends eqLogic {
                 $res[$b] = array_merge($base, array('urgent' => true, 'reason' => 'délestage : puissance Linky trop élevée'));
                 continue;
             }
-            if ($global !== null) {
+            if ($global !== null && !$forced) {
                 $res[$b] = array_merge($base, $global);
                 continue;
             }
@@ -2133,16 +2138,18 @@ class ThermoFlair325 extends eqLogic {
                     $r['reason'] = 'hors plage : éteinte';
                 }
             }
-            // Chauffage forcé (commande) : consigne Normal, même hors plage,
-            // en mode ECO ou sur une plage « arrêt ».
-            if (!empty($h['force'][$b]) && $now < intval($h['force'][$b])) {
-                $c = floatval($h['consigne']);
-                $level = 'normal';
-                $r['want'] = false;
+            // Chauffage forcé (commande) : chauffe sans regarder la consigne,
+            // jusqu'à la fin du forçage ou la température de sécurité.
+            if ($forced) {
+                $r['level'] = 'forced';
                 $r['mode'] = 'user_force';
-                $cLabel = 'consigne Normal ' . self::fmt($c) . ' °C (chauffage forcé jusqu\'à ' . date('H:i', intval($h['force'][$b])) . ')';
+                $r['consigne'] = null;
+                $r['want'] = true;
+                $r['reason'] = 'chauffage forcé jusqu\'à ' . date('H:i', intval($h['force'][$b])) . ' : ' . self::fmt($T) . ' °C, consigne ignorée (arrêt de sécurité à ' . self::fmt($safety) . ' °C)';
+                $c = null;
+            } else {
+                $r['level'] = $level;
             }
-            $r['level'] = $level;
             if ($c !== null) {
                 $r['consigne'] = $c;
                 if ($T < $c - $hl) {
@@ -3289,6 +3296,17 @@ class ThermoFlair325 extends eqLogic {
             if ($actual === null) {
                 $actual = $hb['cmd_state'];
             }
+            // Batterie allumée à la main (interrupteur, commande Jeedom) pendant
+            // un chauffage forcé : elle rejoint le forçage et s'arrêtera avec
+            // lui, même si sa consigne est atteinte.
+            $fEnd = self::forceEnd($h, $now);
+            if ($fEnd > 0 && !empty($h['on']) && $hb['actual'] === false && $actual === true
+                && $hb['expect'] !== true && $hb['cmd_state'] !== true
+                && !(isset($h['force'][$b]) && $now < intval($h['force'][$b]))) {
+                $h['force'][$b] = $fEnd;
+                $hb['cmd_state'] = true;
+                $this->logAction($msgs, '🔥 « ' . $cfg[$b . '_name'] . ' » allumée à la main pendant le chauffage forcé : elle chauffe jusqu\'à ' . date('H:i', $fEnd) . ', avec les autres batteries forcées.');
+            }
             if ($actual !== $hb['actual']) {
                 $hb['since'] = ($hb['actual'] === null) ? 0 : $now;
                 if ($hb['actual'] === true && $actual === false) {
@@ -3770,6 +3788,19 @@ class ThermoFlair325 extends eqLogic {
         return $c;
     }
 
+    // Heure de fin du chauffage forcé en cours (0 si aucun).
+    public static function forceEnd($h, $now) {
+        $end = 0;
+        if (!empty($h['force']) && is_array($h['force'])) {
+            foreach ($h['force'] as $until) {
+                if ($now < intval($until)) {
+                    $end = max($end, intval($until));
+                }
+            }
+        }
+        return $end;
+    }
+
     public static function forceLabel($cfg, $h, $now) {
         $parts = array();
         $end = 0;
@@ -3897,6 +3928,32 @@ class ThermoFlair325 extends eqLogic {
                         $min = intval($cfg['heat_force_default']);
                     }
                     $min = max(5, min(720, $min));
+                    // Forçage déjà en cours : les batteries pas encore forcées
+                    // le rejoignent jusqu'à la même heure de fin (elles
+                    // s'arrêteront ensemble). Si toutes le sont déjà, l'appui
+                    // relance le forçage pour la durée demandée.
+                    $runEnd = self::forceEnd($h, $now);
+                    $join = array();
+                    if ($runEnd > 0) {
+                        foreach ($bats as $b) {
+                            if ($cfg[$b . '_enabled'] == '1' && !(isset($h['force'][$b]) && $now < intval($h['force'][$b]))) {
+                                $join[] = $b;
+                            }
+                        }
+                    }
+                    if ($join) {
+                        $names = array();
+                        foreach ($join as $b) {
+                            $h['force'][$b] = $runEnd;
+                            $names[] = '« ' . $cfg[$b . '_name'] . ' »';
+                        }
+                        $this->logAction($msgs, '🔥 Chauffage forcé : ' . implode(' et ', $names) . ' ajouté au forçage en cours, jusqu\'à ' . date('H:i', $runEnd) . ' (toutes les batteries forcées s\'arrêteront ensemble).');
+                        $lock = self::nightLock($cfg, $h, $now + 60);
+                        if ($lock !== null) {
+                            $msgs[] = array('cat' => 'safety', 'text' => '🛡️ Chauffage forcé demandé pendant le verrou de nuit (' . $lock['start'] . '–' . $lock['end'] . ') : il ne chauffera qu\'après ' . $lock['end'] . ', ou désactivez le verrou.');
+                        }
+                        break;
+                    }
                     $names = array();
                     foreach ($bats as $b) {
                         if ($cfg[$b . '_enabled'] == '1') {
@@ -4240,6 +4297,8 @@ class ThermoFlair325 extends eqLogic {
         $r['#b1_name#'] = $esc($cfg['b1_name'] !== '' ? $cfg['b1_name'] : 'Batterie 1');
         $r['#b2_name#'] = $esc($cfg['b2_name'] !== '' ? $cfg['b2_name'] : 'Batterie 2');
         $r['#force_b2_display#'] = ($cfg['b2_enabled'] == '1') ? '' : 'display:none;';
+        $r['#force_btn_display#'] = ($fl === '') ? '' : 'display:none;';
+        $r['#force_add_display#'] = ($fl !== '' && $cfg['b2_enabled'] == '1' && !(isset($h['force']['b2']) && $now < intval($h['force']['b2']))) ? '' : 'display:none;';
         $nl = self::nightLock($cfg, $h, $now);
         $r['#lock_txt#'] = !empty($h['lock']) ? '🛡️ verrou de nuit ' . $cfg['night_lock_start'] . '–' . $cfg['night_lock_end'] . ($nl !== null ? ' (en cours)' : '') : '⚠️ verrou de nuit désactivé';
         $r['#mode_state#'] = ($h['mode'] == 'eco') ? 1 : 0;

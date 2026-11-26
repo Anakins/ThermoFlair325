@@ -617,7 +617,7 @@ $months = ThermoFlair325::MONTHS;
 
                     <fieldset>
                         <legend><i class="fas fa-fire"></i> {{Chauffage forcé (à distance)}}</legend>
-                        <div class="alert alert-info tf-explain">{{Pour chauffer avant de rentrer, même hors plage ou en mode ECO : la batterie chauffe jusqu'à la consigne Normal pendant la durée choisie, puis retour aux plages. Toutes les sécurités restent actives (verrou de nuit, température maximum, délestage).}}
+                        <div class="alert alert-info tf-explain">{{La batterie chauffe pendant toute la durée choisie, quelle que soit la température : consigne ignorée, même si elle est déjà atteinte, hors plage, en mode ECO ou hors saison. Puis retour aux plages. Les sécurités restent actives : température de sécurité (arrêt), verrou de nuit, délestage, vitesse minimum de la VMC.}}<br>{{Pendant un forçage du bas, allumer le haut (bouton « + Haut » du widget ou du récapitulatif, ou à la main si son état est remonté dans Jeedom) l'ajoute au forçage : il chauffe lui aussi quelle que soit la température, et les deux s'arrêtent ensemble à la fin du forçage.}}
                             <ul><li><code>Forcer la batterie 1 (minutes)</code> / <code>Forcer les deux batteries (minutes)</code> : {{curseur = durée en minutes (bouton JeedomConnect, scénario).}}</li>
                             <li><code>Forcer le chauffage</code> : {{titre « bas » ou « tout », message = durée (60, 1h, 1h30).}}</li>
                             <li><code>Arrêter le chauffage forcé</code>.</li></ul></div>

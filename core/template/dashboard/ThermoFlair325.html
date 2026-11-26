@@ -3,6 +3,10 @@
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap { padding: 4px 8px 6px 8px; text-align: left; font-size: 12px; }
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-sec { margin: 6px 0 2px 0; padding-top: 4px; border-top: 1px solid rgba(128,128,128,.25); }
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-sec:first-child { border-top: none; }
+        /* Couleurs des boutons (le thème du dashboard les grise) : orange = vitesse 4, bleu = autre vitesse, rouge = forçage. */
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap .btn.btn-warning { background-color: #f0ad4e !important; border-color: #eea236 !important; color: #fff !important; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap .btn.btn-info { background-color: #5bc0de !important; border-color: #46b8da !important; color: #fff !important; }
+        .eqLogic[data-eqLogic_uid="#uid#"] .tf-wrap .btn.btn-danger { background-color: #d9534f !important; border-color: #d43f3a !important; color: #fff !important; }
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-head { display: flex; align-items: center; justify-content: space-between; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: .5px; opacity: .85; }
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-toggle { cursor: pointer; white-space: nowrap; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(128,128,128,.25); text-transform: none; letter-spacing: 0; }
         .eqLogic[data-eqLogic_uid="#uid#"] .tf-toggle.tf-toggle-on { background: #2a9d8f; color: #fff; }
@@ -73,11 +77,11 @@
                     <a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="-0.5">−</a><span class="tf-cons-val">#eco#°</span><a class="btn btn-xs btn-default tf-cons" data-which="e" data-delta="0.5">+</a>
                 </div>
             </div>
-            <div class="tf-actions">🔥 Forcer #force_txt# :
-                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_b1_id#" data-min="#force_min#" title="Chauffer « #b1_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name#</a>
-                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_b2_display#" title="Chauffer « #b1_name# » et « #b2_name# » jusqu'à la consigne Normal pendant #force_txt#">#b1_name# + #b2_name#</a>
+            <div class="tf-actions" style="#force_btn_display#">🔥 Forcer #force_txt# :
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_b1_id#" data-min="#force_min#" title="Chauffer « #b1_name# » pendant #force_txt#, quelle que soit la température">#b1_name#</a>
+                <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_b2_display#" title="Chauffer « #b1_name# » et « #b2_name# » pendant #force_txt#, quelle que soit la température">#b1_name# + #b2_name#</a>
             </div>
-            <div class="tf-ovr" style="#force_state_display#">🔥 Forcé : #force_state# <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#heat_force_stop_id#">Arrêter</a></div>
+            <div class="tf-ovr" style="#force_state_display#">🔥 Forcé : #force_state# <a class="btn btn-xs btn-danger tf-force" data-cmd_id="#heat_force_all_id#" data-min="#force_min#" style="#force_add_display#" title="Ajouter « #b2_name# » au forçage : il chauffe jusqu'à la même heure de fin, quelle que soit la température">+ #b2_name#</a> <a class="btn btn-xs btn-default tf-cmd" data-cmd_id="#heat_force_stop_id#">Arrêter</a></div>
             #batteries#
             <div class="tf-small">#lock_txt#</div>
         </div>

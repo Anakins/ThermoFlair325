@@ -140,7 +140,9 @@ Sur un créneau de nuit (23h30 → 5h30 par défaut), **aucune batterie ne chauf
 
 ## Chauffage forcé (à distance)
 
-Pour chauffer avant de rentrer, même hors plage ou en mode ECO : la batterie chauffe jusqu'à la consigne Normal pendant la durée choisie, puis retour aux plages. Toutes les sécurités restent actives.
+La batterie chauffe pendant toute la durée choisie, **quelle que soit la température** : la consigne est ignorée, même si elle est déjà atteinte, hors plage, en mode ECO ou hors saison. Ensuite, retour aux plages. Les sécurités restent actives : la température de sécurité arrête la batterie, et le verrou de nuit, le délestage et la vitesse minimum de la VMC s'appliquent.
+
+Pendant un forçage du bas, allumer le haut l'ajoute au forçage : bouton « + Haut » du widget ou du récapitulatif, ou allumage à la main si la commande d'état de la batterie est renseignée. Le haut chauffe alors lui aussi quelle que soit la température, et les deux batteries s'arrêtent ensemble à la fin du forçage.
 - `Forcer la batterie 1 (minutes)` / `Forcer les deux batteries (minutes)` : curseur = durée, idéal pour un bouton JeedomConnect.
 - `Forcer le chauffage` : titre « bas » ou « tout », message = durée (`60`, `1h`, `1h30`).
 - `Arrêter le chauffage forcé`. L'info `Chauffage forcé` indique ce qui est forcé et jusqu'à quand.

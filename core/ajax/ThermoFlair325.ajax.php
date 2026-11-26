@@ -107,6 +107,8 @@ try {
                 'mode' => isset($rt['heat']['mode']) ? $rt['heat']['mode'] : 'normal',
                 'lock' => !empty($rt['heat']['lock']) ? 1 : 0,
                 'force' => ThermoFlair325::forceLabel(ThermoFlair325::getCfg($eq), $rt['heat'], ThermoFlair325::now()),
+                'force_add_b2' => (ThermoFlair325::forceEnd($rt['heat'], ThermoFlair325::now()) > 0 && $cfg['b2_enabled'] == '1' && !(isset($rt['heat']['force']['b2']) && ThermoFlair325::now() < intval($rt['heat']['force']['b2']))) ? 1 : 0,
+                'b2_name' => $cfg['b2_name'],
                 'filter_cleaned' => $rt['filter']['cleaned'],
                 'filter_dirty' => $rt['filter']['dirty'],
                 'shed' => $rt['shed'],
