@@ -1,5 +1,10 @@
 # Changelog ThermoFlair 325
 
+## 0.9.8 (2026-11-26)
+- **Messages d'arrêt des batteries plus justes.** À la fin d'une plage, le message disait « consigne ECO 19 °C (hors plage) atteinte » sans dire pourquoi la batterie s'arrêtait. Il dit maintenant « fin de la plage « Journée Travail Matin » (05:40–08:30) — 20,4 °C : consigne ECO 19 °C (hors plage) dépassée ». « Atteinte » devient « dépassée » quand la température est nettement au-dessus de la consigne.
+- **Chauffage forcé** : le message de lancement ne parle plus de la consigne Normal (le forçage l'ignore) ; il dit « quelle que soit la température (arrêt seulement à la température de sécurité) ».
+- **Plage de silence** : « la VMC est limitée à 2 » devient « limitée à la vitesse 2 ».
+
 ## 0.9.7 (2026-11-26)
 - **Plages de chauffage datées** (vacances, jour de télétravail). Nouvelle colonne « Dates » : vide, la plage vaut toutes les semaines comme avant ; avec une date de début et de fin, elle ne vaut qu'entre ces dates, sur ses jours cochés, et remplace ces jours-là les plages permanentes des mêmes batteries. Une seule journée : même date dans les deux cases (la date de fin se remplit seule). Après la date de fin, elle ne s'applique plus. Sous le tableau, la liste des plages datées avec leur état (à venir, en cours, terminée) ; la semaine type ne montre que les plages permanentes. Contrôles : date de fin avant le début, aucun jour coché dans la période, plage terminée à supprimer. Les conseils d'anticipation ne comptent plus les jours remplacés.
 

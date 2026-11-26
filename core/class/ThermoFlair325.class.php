@@ -41,7 +41,7 @@ require_once dirname(__FILE__) . '/ThermoFlair325Brink.class.php';
 class ThermoFlair325 extends eqLogic {
 
     const PLUGIN = 'ThermoFlair325';
-    const VERSION = '0.9.7';
+    const VERSION = '0.9.8';
 
     const ALL_DAYS = array('1', '2', '3', '4', '5', '6', '7');
 
@@ -2266,7 +2266,7 @@ class ThermoFlair325 extends eqLogic {
                     $r['want'] = true;
                     $r['reason'] = self::fmt($T) . ' °C pour une ' . $cLabel;
                 } elseif ($T >= $c + $hh) {
-                    $r['reason'] = self::fmt($T) . ' °C : ' . $cLabel . ' atteinte' . (!empty($ctx['solar']) ? ' (chaleur du soleil)' : '');
+                    $r['reason'] = self::fmt($T) . ' °C : ' . $cLabel . ($T - $c > $hh + 0.25 ? ' dépassée' : ' atteinte') . (!empty($ctx['solar']) ? ' (chaleur du soleil)' : '');
                 } else {
                     $r['want'] = ($actual === true);
                     $r['reason'] = self::fmt($T) . ' °C, entre ' . self::fmt($c - $hl, 2) . ' et ' . self::fmt($c + $hh, 2) . ' °C (battement) : on ' . ($actual === true ? 'continue' : 'reste à l\'arrêt') . ' — ' . $cLabel;
@@ -2329,7 +2329,7 @@ class ThermoFlair325 extends eqLogic {
                 $out['want'] = false;
                 $out['urgent'] = true;
                 $out['blocked'] = true;
-                $out['reason'] = 'plage de silence « ' . $cap['label'] . ' » (VMC limitée à ' . $cap['max'] . ' jusqu\'à ' . $cap['end'] . ') : il faut la vitesse ' . $req . ' pour chauffer — ' . $dec['reason'];
+                $out['reason'] = 'plage de silence « ' . $cap['label'] . ' » (VMC limitée à la vitesse ' . $cap['max'] . ' jusqu\'à ' . $cap['end'] . ') : il faut la vitesse ' . $req . ' pour chauffer — ' . $dec['reason'];
                 return $out;
             }
             $out['demand'] = $req;
@@ -3476,7 +3476,7 @@ class ThermoFlair325 extends eqLogic {
                 $key = $today . '|' . $cap['label'];
                 if (empty($h['blocked_note'][$b]) || $h['blocked_note'][$b] != $key) {
                     $h['blocked_note'][$b] = $key;
-                    $msgs[] = array('cat' => 'heat', 'text' => "🌙 Plage de silence « " . $cap['label'] . " » : la VMC est limitée à " . $cap['max'] . " jusqu'à " . $cap['end'] . ", la batterie « $name » (qui a besoin de la vitesse " . intval($cfg[$b . '_min_speed']) . ") ne chauffera pas pendant cette plage.");
+                    $msgs[] = array('cat' => 'heat', 'text' => "🌙 Plage de silence « " . $cap['label'] . " » : la VMC est limitée à la vitesse " . $cap['max'] . " jusqu'à " . $cap['end'] . ", la batterie « $name » (qui a besoin de la vitesse " . intval($cfg[$b . '_min_speed']) . ") ne chauffera pas pendant cette plage.");
                 }
             }
             if ($g['demand'] !== null) {
@@ -3484,6 +3484,15 @@ class ThermoFlair325 extends eqLogic {
             }
             $gate = self::timerGate($cfg, $b, $g, $hb, $now);
             $hb['reason'] = $gate['reason'];
+            // Plage pendant laquelle la batterie chauffe : à l'arrêt, le
+            // message dit si c'est la fin de cette plage qui l'éteint.
+            $slotName = !empty($d['slot']) ? self::rowName($d['slot']) : '';
+            if (!isset($hb['on_slot'])) {
+                $hb['on_slot'] = '';
+            }
+            if ($hb['actual'] === true && $slotName !== '') {
+                $hb['on_slot'] = $slotName;
+            }
             $hb['target'] = $d['consigne'];
             // Consigne « de confort » (Normal, consigne fixe, marche forcée) :
             // sert aux statistiques de stabilité (pas l'ECO ni le hors plage).
@@ -3501,9 +3510,16 @@ class ThermoFlair325 extends eqLogic {
                 } else {
                     $retry = ($hb['expect'] === $wantOn);
                     $hb['retries'] = $retry ? $hb['retries'] + 1 : 0;
+                    $why = $gate['reason'];
+                    if (!$wantOn && $hb['on_slot'] !== '' && $hb['on_slot'] !== $slotName && empty($d['lock']) && $d['mode'] != 'user_force') {
+                        $why = 'fin de la plage ' . $hb['on_slot'] . ' — ' . $why;
+                    }
                     if ($this->switchBattery($cfg, $hb, $b, $wantOn, $now) && !$retry) {
-                        log::add(self::PLUGIN, 'info', $this->getHumanName() . " : batterie $name " . ($wantOn ? 'allumée' : 'éteinte') . ' — ' . $gate['reason']);
-                        $msgs[] = array('cat' => 'heat', 'text' => ($wantOn ? '🔥' : '❄️') . " Batterie « $name » " . ($wantOn ? 'allumée' : 'éteinte') . ' : ' . $gate['reason'] . '.');
+                        log::add(self::PLUGIN, 'info', $this->getHumanName() . " : batterie $name " . ($wantOn ? 'allumée' : 'éteinte') . ' — ' . $why);
+                        $msgs[] = array('cat' => 'heat', 'text' => ($wantOn ? '🔥' : '❄️') . " Batterie « $name » " . ($wantOn ? 'allumée' : 'éteinte') . ' : ' . $why . '.');
+                        if (!$wantOn) {
+                            $hb['on_slot'] = '';
+                        }
                     }
                 }
             }
@@ -4071,7 +4087,7 @@ class ThermoFlair325 extends eqLogic {
                             $names[] = '« ' . $cfg[$b . '_name'] . ' »';
                         }
                     }
-                    $this->logAction($msgs, '🔥 Chauffage forcé : ' . implode(' et ', $names) . ' pendant ' . self::fmtDuration($min) . ' (jusqu\'à ' . date('H:i', $now + $min * 60) . '), consigne Normal ' . self::fmt($h['consigne']) . ' °C.');
+                    $this->logAction($msgs, '🔥 Chauffage forcé : ' . implode(' et ', $names) . ' pendant ' . self::fmtDuration($min) . ' (jusqu\'à ' . date('H:i', $now + $min * 60) . '), quelle que soit la température (arrêt seulement à la température de sécurité).');
                     $lock = self::nightLock($cfg, $h, $now + 60);
                     if ($lock !== null) {
                         $msgs[] = array('cat' => 'safety', 'text' => '🛡️ Chauffage forcé demandé pendant le verrou de nuit (' . $lock['start'] . '–' . $lock['end'] . ') : il ne chauffera qu\'après ' . $lock['end'] . ', ou désactivez le verrou.');
